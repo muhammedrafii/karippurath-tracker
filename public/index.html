@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plumbing Shop Dues & Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-4 max-w-6xl">
+        <!-- Header -->
+        <header class="bg-blue-700 text-white p-4 rounded-lg shadow-md flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">🔧 Karippurath Agencies - Dues Tracker</h1>
+            <span class="text-sm bg-blue-800 px-3 py-1 rounded">Live Dashboard</span>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <p class="text-gray-500 text-sm">Total Outstanding</p>
+                <h2 id="totalOutstanding" class="text-3xl font-bold text-gray-800">₹0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+                <p class="text-gray-500 text-sm">Current Due (Upcoming)</p>
+                <h2 id="currentDue" class="text-3xl font-bold text-gray-800">₹0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                <p class="text-gray-500 text-sm">Overdue Amount</p>
+                <h2 id="overdueAmount" class="text-3xl font-bold text-red-600">₹0</h2>
+            </div>
+        </div>
+
+        <!-- Action Forms Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Add Company Form -->
+            <div class="bg-white p-5 rounded-lg shadow">
+                <h3 class="font-bold text-lg mb-3 text-blue-700">➕ Add Distributor & Book Outstanding</h3>
+                <form id="companyForm" onsubmit="addCompany(event)" class="space-y-3">
+                    <input type="text" id="compName" placeholder="Company Name (e.g. Ashirvad)" required class="w-full p-2 border rounded">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="compCredit" placeholder="Credit Days (0, 15, 30)" min="0" required class="p-2 border rounded">
+                        <input type="number" id="openingBalance" placeholder="Total Outstanding from Book (₹)" min="0" required class="p-2 border rounded bg-yellow-50">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="bankName" placeholder="Bank Name" required class="p-2 border rounded">
+                        <input type="text" id="accountNo" placeholder="Account No" required class="p-2 border rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="ifsc" placeholder="IFSC Code" required class="p-2 border rounded">
+                        <input type="text" id="upi" placeholder="UPI ID" required class="p-2 border rounded">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Save Company Profile & Opening Balance</button>
+                </form>
+            </div>
+
+            <!-- Add Bill Form -->
+            <div class="bg-white p-5 rounded-lg shadow">
+                <h3 class="font-bold text-lg mb-3 text-blue-700">📄 Enter New / Last Bill</h3>
+                <form id="billForm" onsubmit="addBill(event)" class="space-y-3">
+                    <select id="billCompanySelect" required class="w-full p-2 border rounded bg-white">
+                        <option value="">Select Distributor</option>
+                    </select>
+                    <input type="text" id="billNo" placeholder="Bill Number (#INV)" required class="w-full p-2 border rounded">
+                    <input type="date" id="billDate" required class="w-full p-2 border rounded">
+                    <input type="number" id="billAmount" placeholder="Total Amount (₹)" required class="w-full p-2 border rounded">
+                    <button type="submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">Save Bill & Set Due Date</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Companies Summary Table -->
+        <div class="bg-white p-5 rounded-lg shadow mb-6">
+            <h3 class="font-bold text-lg mb-2 text-gray-800">🏢 Distributors Summary</h3>
+            <p class="text-xs text-gray-500 mb-3">Click on any company row to view sorted overdue/oldest bills, make payments, apply discounts/credit notes, and manage records.</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700 text-sm">
+                            <th class="p-2">Company Name</th>
+                            <th class="p-2">Credit Terms</th>
+                            <th class="p-2">Total Outstanding</th>
+                            <th class="p-2">Bank Details</th>
+                            <th class="p-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companiesTableBody" class="text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Details & Bills Modal -->
+    <div id="billModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white rounded-lg max-w-5xl w-full p-5 max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="modalTitle" class="font-bold text-xl text-blue-700">Company Bills & Payments</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+            </div>
+
+            <!-- Action Tabs / Forms Grid in Modal -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <!-- Record Payment Section -->
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <h4 class="font-bold text-xs text-blue-900 mb-2">💸 Record Payment (FIFO Settlement)</h4>
+                    <form id="generalPaymentForm" onsubmit="makeCompanyPayment(event, 'Payment')" class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="gen_pay_amt" placeholder="Amount (₹)" required class="p-1.5 border rounded text-xs bg-white">
+                            <input type="date" id="gen_pay_date" required class="p-1.5 border rounded text-xs bg-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="gen_pay_mode" class="p-1.5 border rounded text-xs bg-white">
+                                <option value="NEFT">NEFT</option>
+                                <option value="GPay">GPay</option>
+                                <option value="RTGS">RTGS</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                            <input type="text" id="gen_pay_remark" placeholder="Remark / Txn ID" class="p-1.5 border rounded text-xs bg-white">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white p-1.5 rounded text-xs font-bold hover:bg-blue-700">Apply Payment</button>
+                    </form>
+                </div>
+
+                <!-- Record Credit Note / Discount Section -->
+                <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                    <h4 class="font-bold text-xs text-purple-900 mb-2">🎁 Record Company Discount / Credit Note</h4>
+                    <form id="discountForm" onsubmit="makeCompanyPayment(event, 'Credit Note / Discount')" class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="disc_amt" placeholder="Discount Amount (₹)" required class="p-1.5 border rounded text-xs bg-white">
+                            <input type="date" id="disc_date" required class="p-1.5 border rounded text-xs bg-white">
+                        </div>
+                        <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-1.5 border rounded text-xs bg-white">
+                        <button type="submit" class="w-full bg-purple-600 text-white p-1.5 rounded text-xs font-bold hover:bg-purple-700">Apply Credit Note / Discount</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700">
+                            <th class="p-2">Bill No & Date</th>
+                            <th class="p-2">Due Date & Status (Overdue First)</th>
+                            <th class="p-2">Total / Balance</th>
+                            <th class="p-2">Payment & Discount History</th>
+                            <th class="p-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalBillsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Company Modal -->
+    <div id="editCompanyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-lg max-w-lg w-full p-5 shadow-xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-xl text-blue-700">✏️ Edit Distributor Profile</h3>
+                <button onclick="closeEditCompanyModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+            </div>
+            <form id="editCompanyForm" onsubmit="saveEditCompany(event)" class="space-y-3">
+                <input type="hidden" id="edit_comp_id">
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Company Name</label>
+                    <input type="text" id="edit_comp_name" required class="w-full p-2 border rounded text-sm mt-1">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Credit Days</label>
+                    <input type="number" id="edit_comp_credit" min="0" required class="w-full p-2 border rounded text-sm mt-1">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600">Bank Name</label>
+                        <input type="text" id="edit_bank_name" required class="w-full p-2 border rounded text-sm mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600">Account No</label>
+                        <input type="text" id="edit_account_no" required class="w-full p-2 border rounded text-sm mt-1">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600">IFSC Code</label>
+                        <input type="text" id="edit_ifsc" required class="w-full p-2 border rounded text-sm mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600">UPI ID</label>
+                        <input type="text" id="edit_upi" required class="w-full p-2 border rounded text-sm mt-1">
+                    </div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-bold text-sm">Update Company Profile</button>
+                    <button type="button" onclick="closeEditCompanyModal()" class="w-full bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 font-bold text-sm">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allData = {};
+        let activeModalCompany = null;
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/dashboard');
+                allData = await res.json();
+
+                document.getElementById('totalOutstanding').innerText = `₹${allData.metrics.totalOutstanding.toLocaleString()}`;
+                document.getElementById('currentDue').innerText = `₹${allData.metrics.currentDue.toLocaleString()}`;
+                document.getElementById('overdueAmount').innerText = `₹${allData.metrics.overdueAmount.toLocaleString()}`;
+
+                const select = document.getElementById('billCompanySelect');
+                select.innerHTML = '<option value="">Select Distributor</option>';
+                allData.companies.forEach(c => {
+                    select.innerHTML += `<option value="${c.name}">${c.name} (${c.creditDays} Days Credit)</option>`;
+                });
+
+                const compBody = document.getElementById('companiesTableBody');
+                compBody.innerHTML = '';
+                
+                if(allData.companies.length === 0) {
+                    compBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No companies added yet.</td></tr>`;
+                } else {
+                    allData.companies.forEach(c => {
+                        const tr = document.createElement('tr');
+                        tr.className = "border-b hover:bg-blue-50 cursor-pointer";
+                        tr.onclick = () => openModal(c.name);
+                        tr.innerHTML = `
+                            <td class="p-3 font-bold text-blue-800">${c.name}</td>
+                            <td class="p-3">${c.creditDays} Days</td>
+                            <td class="p-3 font-bold text-red-600">₹${c.outstanding.toLocaleString()}</td>
+                            <td class="p-3 text-xs text-gray-600">${c.bankName} - <b>${c.accountNo}</b><br>IFSC: ${c.ifsc}</td>
+                            <td class="p-3" onclick="event.stopPropagation()">
+                                <button onclick="openEditCompany(${c.id}, event)" class="text-blue-600 hover:text-blue-800 text-xs font-bold px-2 py-1 bg-blue-50 rounded mr-1">Edit</button>
+                                <button onclick="deleteCompany(${c.id})" class="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1 bg-red-50 rounded">Delete</button>
+                            </td>
+                        `;
+                        compBody.appendChild(tr);
+                    });
+                }
+
+                if (activeModalCompany) {
+                    openModal(activeModalCompany);
+                }
+            } catch (err) {
+                console.error("Error loading dashboard data:", err);
+            }
+        }
+
+        function openModal(companyName) {
+            activeModalCompany = companyName;
+            document.getElementById('modalTitle').innerText = `${companyName} - Bills, Payments & Credit Notes`;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('gen_pay_date').value = todayStr;
+            document.getElementById('disc_date').value = todayStr;
+
+            const modalBody = document.getElementById('modalBillsBody');
+            modalBody.innerHTML = '';
+
+            const companyBills = allData.bills
+                .filter(b => b.companyName === companyName)
+                .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            if(companyBills.length === 0) {
+                modalBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No bills recorded for this company.</td></tr>`;
+            } else {
+                companyBills.forEach(b => {
+                    const isOverdue = b.dueDate < todayStr && b.status !== 'Settled';
+                    let badgeColor = b.status === 'Settled' ? 'bg-green-100 text-green-800' : (isOverdue ? 'bg-red-200 text-red-900 font-bold' : 'bg-yellow-100 text-yellow-800');
+                    let statusText = b.status === 'Settled' ? 'Settled' : (isOverdue ? '⚠️ OVERDUE' : 'Current Due');
+
+                    const billPayments = allData.payments.filter(p => p.billId === b.id);
+
+                    modalBody.innerHTML += `
+                        <tr class="border-b bg-white align-top ${isOverdue ? 'bg-red-50/40' : ''}">
+                            <td class="p-3">
+                                <div id="bill_display_${b.id}">
+                                    <span class="font-bold text-blue-900 text-base">${b.billNo}</span><br>
+                                    <span class="text-xs text-gray-500">Date: ${b.date}</span><br>
+                                    <button onclick="toggleEditBill(${b.id})" class="text-blue-600 hover:underline text-xs mt-1 inline-block font-semibold">✏️ Edit Bill</button>
+                                </div>
+                                <div id="bill_edit_${b.id}" class="hidden space-y-1 bg-blue-50 p-2 rounded border text-xs">
+                                    <input type="text" id="edit_billno_${b.id}" value="${b.billNo}" class="w-full p-1 border rounded" placeholder="Bill No">
+                                    <input type="date" id="edit_billdate_${b.id}" value="${b.date}" class="w-full p-1 border rounded">
+                                    <input type="number" id="edit_billamt_${b.id}" value="${b.totalAmount}" class="w-full p-1 border rounded" placeholder="Total Amount">
+                                    <div class="flex gap-1">
+                                        <button onclick="saveEditBill(${b.id})" class="bg-blue-600 text-white px-2 py-1 rounded">Save</button>
+                                        <button onclick="toggleEditBill(${b.id})" class="bg-gray-300 px-2 py-1 rounded">Cancel</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-3 text-xs">
+                                Due: <b class="${isOverdue ? 'text-red-600' : 'text-gray-800'}">${b.dueDate}</b><br>
+                                <span class="px-2 py-0.5 rounded text-xs ${badgeColor} inline-block mt-1">${statusText}</span>
+                            </td>
+                            <td class="p-3 text-xs">
+                                Total: ₹${b.totalAmount.toLocaleString()}<br>
+                                Paid/Credited: ₹${b.paidAmount.toLocaleString()}<br>
+                                <span class="font-bold text-blue-700 text-sm">Balance: ₹${b.balanceDue.toLocaleString()}</span>
+                            </td>
+                            <td class="p-3">
+                                <div>
+                                    <p class="text-xs font-bold text-gray-700">Entries Applied (${billPayments.length}):</p>
+                                    ${billPayments.length === 0 ? '<span class="text-xs text-gray-400">None yet.</span>' : ''}
+                                    <div class="space-y-1 mt-1 max-h-32 overflow-y-auto">
+                                        ${billPayments.map(p => `
+                                            <div class="bg-gray-100 p-1.5 rounded text-xs flex justify-between items-center">
+                                                <div id="pay_disp_${p.id}">
+                                                    <b>₹${p.amount.toLocaleString()}</b> (${p.mode}) on ${p.date} <br><span class="text-gray-500">Ref: ${p.remark}</span>
+                                                </div>
+                                                <div id="pay_edit_form_${p.id}" class="hidden space-y-1">
+                                                    <input type="number" id="edit_p_amt_${p.id}" value="${p.amount}" class="w-20 p-0.5 border rounded text-xs">
+                                                    <input type="date" id="edit_p_date_${p.id}" value="${p.date}" class="p-0.5 border rounded text-xs">
+                                                    <input type="text" id="edit_p_remark_${p.id}" value="${p.remark}" class="w-24 p-0.5 border rounded text-xs">
+                                                    <button onclick="saveEditPayment(${p.id})" class="bg-blue-600 text-white px-1 rounded">Save</button>
+                                                    <button onclick="toggleEditPayment(${p.id})" class="bg-gray-400 px-1 rounded">Cancel</button>
+                                                </div>
+                                                <div class="flex gap-1 ml-2">
+                                                    <button onclick="toggleEditPayment(${p.id})" class="text-blue-600 hover:underline font-bold">Edit</button>
+                                                    <button onclick="deletePayment(${p.id})" class="text-red-600 hover:underline font-bold">Del</button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <button onclick="deleteBill(${b.id})" class="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1 bg-red-50 rounded">Delete Bill</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('billModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            activeModalCompany = null;
+            document.getElementById('billModal').classList.add('hidden');
+        }
+
+        function openEditCompany(id, event) {
+            if (event) event.stopPropagation();
+            const comp = allData.companies.find(c => c.id === id);
+            if (!comp) return;
+
+            document.getElementById('edit_comp_id').value = comp.id;
+            document.getElementById('edit_comp_name').value = comp.name;
+            document.getElementById('edit_comp_credit').value = comp.creditDays;
+            document.getElementById('edit_bank_name').value = comp.bankName;
+            document.getElementById('edit_account_no').value = comp.accountNo;
+            document.getElementById('edit_ifsc').value = comp.ifsc;
+            document.getElementById('edit_upi').value = comp.upi;
+
+            document.getElementById('editCompanyModal').classList.remove('hidden');
+        }
+
+        function closeEditCompanyModal() {
+            document.getElementById('editCompanyModal').classList.add('hidden');
+        }
+
+        async function saveEditCompany(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit_comp_id').value;
+            const payload = {
+                name: document.getElementById('edit_comp_name').value,
+                creditDays: document.getElementById('edit_comp_credit').value,
+                bankName: document.getElementById('edit_bank_name').value,
+                accountNo: document.getElementById('edit_account_no').value,
+                ifsc: document.getElementById('edit_ifsc').value,
+                upi: document.getElementById('edit_upi').value
+            };
+
+            const res = await fetch(`/api/company/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                closeEditCompanyModal();
+                loadDashboard();
+            } else {
+                alert('Failed to update company profile');
+            }
+        }
+
+        async function makeCompanyPayment(e, type) {
+            e.preventDefault();
+            let payload = {};
+
+            if (type === 'Payment') {
+                payload = {
+                    companyName: activeModalCompany,
+                    paymentAmount: document.getElementById('gen_pay_amt').value,
+                    paymentDate: document.getElementById('gen_pay_date').value,
+                    paymentMode: document.getElementById('gen_pay_mode').value,
+                    remark: document.getElementById('gen_pay_remark').value
+                };
+            } else {
+                payload = {
+                    companyName: activeModalCompany,
+                    paymentAmount: document.getElementById('disc_amt').value,
+                    paymentDate: document.getElementById('disc_date').value,
+                    paymentMode: 'Credit Note / Discount',
+                    remark: document.getElementById('disc_remark').value
+                };
+            }
+
+            const res = await fetch('/api/payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                if (type === 'Payment') {
+                    document.getElementById('generalPaymentForm').reset();
+                    document.getElementById('gen_pay_date').value = new Date().toISOString().split('T')[0];
+                } else {
+                    document.getElementById('discountForm').reset();
+                    document.getElementById('disc_date').value = new Date().toISOString().split('T')[0];
+                }
+                loadDashboard();
+            } else {
+                alert('Failed to record entry');
+            }
+        }
+
+        function toggleEditBill(id) {
+            const disp = document.getElementById(`bill_display_${id}`);
+            const form = document.getElementById(`bill_edit_${id}`);
+            disp.classList.toggle('hidden');
+            form.classList.toggle('hidden');
+        }
+
+        async function saveEditBill(id) {
+            const payload = {
+                billNo: document.getElementById(`edit_billno_${id}`).value,
+                date: document.getElementById(`edit_billdate_${id}`).value,
+                amount: document.getElementById(`edit_billamt_${id}`).value
+            };
+            await fetch(`/api/bill/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            loadDashboard();
+        }
+
+        function toggleEditPayment(id) {
+            const disp = document.getElementById(`pay_disp_${id}`);
+            const form = document.getElementById(`pay_edit_form_${id}`);
+            disp.classList.toggle('hidden');
+            form.classList.toggle('hidden');
+        }
+
+        async function saveEditPayment(id) {
+            const payload = {
+                paymentAmount: document.getElementById(`edit_p_amt_${id}`).value,
+                paymentDate: document.getElementById(`edit_p_date_${id}`).value,
+                remark: document.getElementById(`edit_p_remark_${id}`).value
+            };
+            await fetch(`/api/payment/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            loadDashboard();
+        }
+
+        async function deletePayment(id) {
+            if(confirm('Are you sure you want to delete this record? The bill balances will be readjusted.')) {
+                await fetch(`/api/payment/${id}`, { method: 'DELETE' });
+                loadDashboard();
+            }
+        }
+
+        async function addCompany(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('compName').value,
+                creditDays: document.getElementById('compCredit').value,
+                openingBalance: document.getElementById('openingBalance').value,
+                bankName: document.getElementById('bankName').value,
+                accountNo: document.getElementById('accountNo').value,
+                ifsc: document.getElementById('ifsc').value,
+                upi: document.getElementById('upi').value,
+            };
+            await fetch('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            document.getElementById('companyForm').reset();
+            loadDashboard();
+        }
+
+        async function deleteCompany(id) {
+            if(confirm('Are you sure? This will delete the company and all its bills and payments.')) {
+                await fetch(`/api/company/${id}`, { method: 'DELETE' });
+                closeModal();
+                loadDashboard();
+            }
+        }
+
+        async function addBill(e) {
+            e.preventDefault();
+            const payload = {
+                companyName: document.getElementById('billCompanySelect').value,
+                billNo: document.getElementById('billNo').value,
+                date: document.getElementById('billDate').value,
+                amount: document.getElementById('billAmount').value
+            };
+            await fetch('/api/bill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            document.getElementById('billForm').reset();
+            loadDashboard();
+        }
+
+        async function deleteBill(id) {
+            if(confirm('Are you sure you want to delete this bill and its associated payments?')) {
+                await fetch(`/api/bill/${id}`, { method: 'DELETE' });
+                loadDashboard();
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
