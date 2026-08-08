@@ -25,8 +25,12 @@
                 <p class="text-gray-500 text-sm">Current Due (Upcoming)</p>
                 <h2 id="currentDue" class="text-3xl font-bold text-gray-800">₹0</h2>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-                <p class="text-gray-500 text-sm">Overdue Amount</p>
+            <!-- Clickable Overdue Card -->
+            <div onclick="openOverdueModal()" class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 cursor-pointer hover:bg-red-50 transition transform hover:-translate-y-0.5" title="Click to view overdue companies and bills">
+                <p class="text-gray-500 text-sm flex justify-between items-center">
+                    Overdue Amount 
+                    <span class="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">Click to View 🔍</span>
+                </p>
                 <h2 id="overdueAmount" class="text-3xl font-bold text-red-600">₹0</h2>
             </div>
         </div>
@@ -90,8 +94,31 @@
         </div>
     </div>
 
+    <!-- Overdue Companies Summary Modal -->
+    <div id="overdueModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-lg max-w-3xl w-full p-5 max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-xl text-red-600">🚨 Companies with Overdue Bills</h3>
+                <button onclick="closeOverdueModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+            </div>
+            <p class="text-xs text-gray-500 mb-4">Click "View Overdue Bills" to inspect and clear pending delayed payments for specific companies.</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-red-50 text-red-900">
+                            <th class="p-2">Company Name</th>
+                            <th class="p-2">Total Overdue Amount</th>
+                            <th class="p-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overdueModalBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Company Details & Bills Modal -->
-    <div id="billModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4">
+    <div id="billModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-40">
         <div class="bg-white rounded-lg max-w-5xl w-full p-5 max-h-[90vh] overflow-y-auto shadow-xl">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 id="modalTitle" class="font-bold text-xl text-blue-700">Company Bills & Payments</h3>
@@ -202,6 +229,46 @@
         let allData = {};
         let activeModalCompany = null;
 
+        // Helper to format YYYY-MM-DD into DD/MM/YYYY
+        function formatDateDDMMYYYY(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Helper to calculate due/overdue status string and day count
+        function getDueStatusText(dueDateStr, status) {
+            if (status === 'Settled') return { text: 'Settled', class: 'bg-green-100 text-green-800' };
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const due = new Date(dueDateStr);
+            due.setHours(0, 0, 0, 0);
+
+            const diffTime = due - today;
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                const daysLate = Math.abs(diffDays);
+                return { 
+                    text: `${daysLate} day${daysLate === 1 ? '' : 's'} overdue`, 
+                    class: 'bg-red-200 text-red-900 font-bold' 
+                };
+            } else if (diffDays === 0) {
+                return { 
+                    text: 'Due today', 
+                    class: 'bg-orange-100 text-orange-800 font-bold' 
+                };
+            } else {
+                return { 
+                    text: `Due in ${diffDays} day${diffDays === 1 ? '' : 's'}`, 
+                    class: 'bg-yellow-100 text-yellow-800' 
+                };
+            }
+        }
+
         async function loadDashboard() {
             try {
                 const res = await fetch('/api/dashboard');
@@ -249,6 +316,49 @@
             }
         }
 
+        // Open Overdue Summary Modal when Overdue Card is clicked
+        function openOverdueModal() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const tbody = document.getElementById('overdueModalBody');
+            tbody.innerHTML = '';
+
+            const overdueMap = {};
+            if (allData.bills) {
+                allData.bills.forEach(b => {
+                    if (b.status !== 'Settled' && b.dueDate < todayStr) {
+                        if (!overdueMap[b.companyName]) {
+                            overdueMap[b.companyName] = 0;
+                        }
+                        overdueMap[b.companyName] += b.balanceDue;
+                    }
+                });
+            }
+
+            const overdueCompanies = Object.keys(overdueMap);
+
+            if (overdueCompanies.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">🎉 No companies have overdue bills right now!</td></tr>`;
+            } else {
+                overdueCompanies.forEach(compName => {
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-red-50">
+                            <td class="p-3 font-bold text-blue-900">${compName}</td>
+                            <td class="p-3 font-bold text-red-600">₹${overdueMap[compName].toLocaleString()}</td>
+                            <td class="p-3">
+                                <button onclick="closeOverdueModal(); openModal('${compName}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700">View Overdue Bills</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('overdueModal').classList.remove('hidden');
+        }
+
+        function closeOverdueModal() {
+            document.getElementById('overdueModal').classList.add('hidden');
+        }
+
         function openModal(companyName) {
             activeModalCompany = companyName;
             document.getElementById('modalTitle').innerText = `${companyName} - Bills, Payments & Credit Notes`;
@@ -269,8 +379,10 @@
             } else {
                 companyBills.forEach(b => {
                     const isOverdue = b.dueDate < todayStr && b.status !== 'Settled';
-                    let badgeColor = b.status === 'Settled' ? 'bg-green-100 text-green-800' : (isOverdue ? 'bg-red-200 text-red-900 font-bold' : 'bg-yellow-100 text-yellow-800');
-                    let statusText = b.status === 'Settled' ? 'Settled' : (isOverdue ? '⚠️ OVERDUE' : 'Current Due');
+                    
+                    const formattedDate = formatDateDDMMYYYY(b.date);
+                    const formattedDueDate = formatDateDDMMYYYY(b.dueDate);
+                    const dueInfo = getDueStatusText(b.dueDate, b.status);
 
                     const billPayments = allData.payments.filter(p => p.billId === b.id);
 
@@ -279,7 +391,7 @@
                             <td class="p-3">
                                 <div id="bill_display_${b.id}">
                                     <span class="font-bold text-blue-900 text-base">${b.billNo}</span><br>
-                                    <span class="text-xs text-gray-500">Date: ${b.date}</span><br>
+                                    <span class="text-xs text-gray-500">Date: ${formattedDate}</span><br>
                                     <button onclick="toggleEditBill(${b.id})" class="text-blue-600 hover:underline text-xs mt-1 inline-block font-semibold">✏️ Edit Bill</button>
                                 </div>
                                 <div id="bill_edit_${b.id}" class="hidden space-y-1 bg-blue-50 p-2 rounded border text-xs">
@@ -293,8 +405,8 @@
                                 </div>
                             </td>
                             <td class="p-3 text-xs">
-                                Due: <b class="${isOverdue ? 'text-red-600' : 'text-gray-800'}">${b.dueDate}</b><br>
-                                <span class="px-2 py-0.5 rounded text-xs ${badgeColor} inline-block mt-1">${statusText}</span>
+                                Due: <b class="${isOverdue ? 'text-red-600' : 'text-gray-800'}">${formattedDueDate}</b><br>
+                                <span class="px-2 py-0.5 rounded text-xs ${dueInfo.class} inline-block mt-1">${dueInfo.text}</span>
                             </td>
                             <td class="p-3 text-xs">
                                 Total: ₹${b.totalAmount.toLocaleString()}<br>
@@ -309,7 +421,7 @@
                                         ${billPayments.map(p => `
                                             <div class="bg-gray-100 p-1.5 rounded text-xs flex justify-between items-center">
                                                 <div id="pay_disp_${p.id}">
-                                                    <b>₹${p.amount.toLocaleString()}</b> (${p.mode}) on ${p.date} <br><span class="text-gray-500">Ref: ${p.remark}</span>
+                                                    <b>₹${p.amount.toLocaleString()}</b> (${p.mode}) on ${formatDateDDMMYYYY(p.date)} <br><span class="text-gray-500">Ref: ${p.remark}</span>
                                                 </div>
                                                 <div id="pay_edit_form_${p.id}" class="hidden space-y-1">
                                                     <input type="number" id="edit_p_amt_${p.id}" value="${p.amount}" class="w-20 p-0.5 border rounded text-xs">
