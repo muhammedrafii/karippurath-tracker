@@ -1,338 +1,457 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'database.json');
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Load or Initialize Database
-let db = { companies: [], bills: [], payments: [] };
-if (fs.existsSync(DB_FILE)) {
-    try {
-        db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    } catch (err) {
-        console.error("Error reading database file, starting fresh.");
-    }
-}
-
-function saveDB() {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
+// Initialize Supabase Client
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Dashboard API
-app.get('/api/dashboard', (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
-    let totalOutstanding = 0;
-    let currentDue = 0;
-    let overdueAmount = 0;
+app.get('/api/dashboard', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data: companies, error: compErr } = await supabase.from('companies').select('*');
+        if (compErr) throw compErr;
 
-    db.companies.forEach(comp => {
-        totalOutstanding += comp.outstanding;
-    });
+        const { data: bills, error: billErr } = await supabase.from('bills').select('*');
+        if (billErr) throw billErr;
 
-    db.bills.forEach(bill => {
-        if (bill.status !== 'Settled') {
-            if (bill.dueDate < today) {
-                overdueAmount += bill.balanceDue;
-            } else {
-                currentDue += bill.balanceDue;
+        const { data: payments, error: payErr } = await supabase.from('payments').select('*');
+        if (payErr) throw payErr;
+
+        let totalOutstanding = 0;
+        let currentDue = 0;
+        let overdueAmount = 0;
+
+        companies.forEach(comp => {
+            totalOutstanding += comp.outstanding;
+        });
+
+        bills.forEach(bill => {
+            if (bill.status !== 'Settled') {
+                if (bill.due_date < today) {
+                    overdueAmount += bill.balance_due;
+                } else {
+                    currentDue += bill.balance_due;
+                }
             }
-        }
-    });
+        });
 
-    res.json({
-        companies: db.companies,
-        bills: db.bills,
-        payments: db.payments,
-        metrics: { totalOutstanding, currentDue, overdueAmount }
-    });
+        // Map snake_case database columns to camelCase expected by the frontend
+        const formattedCompanies = companies.map(c => ({
+            id: c.id,
+            name: c.name,
+            creditDays: c.credit_days,
+            outstanding: c.outstanding,
+            bankName: c.bank_name,
+            accountNo: c.account_no,
+            ifsc: c.ifsc,
+            upi: c.upi
+        }));
+
+        const formattedBills = bills.map(b => ({
+            id: b.id,
+            companyName: b.company_name,
+            billNo: b.bill_no,
+            date: b.date,
+            totalAmount: b.total_amount,
+            paidAmount: b.paid_amount,
+            balanceDue: b.balance_due,
+            dueDate: b.due_date,
+            status: b.status
+        }));
+
+        const formattedPayments = payments.map(p => ({
+            id: p.id,
+            billId: p.bill_id,
+            companyName: p.company_name,
+            billNo: p.bill_no,
+            amount: p.amount,
+            date: p.date,
+            mode: p.mode,
+            remark: p.remark
+        }));
+
+        res.json({
+            companies: formattedCompanies,
+            bills: formattedBills,
+            payments: formattedPayments,
+            metrics: { totalOutstanding, currentDue, overdueAmount }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Add Company
-app.post('/api/company', (req, res) => {
-    const { name, creditDays, openingBalance, bankName, accountNo, ifsc, upi } = req.body;
-    const parsedCreditDays = parseInt(creditDays) || 0;
-    const parsedOpeningBal = parseFloat(openingBalance) || 0;
-    
-    const newComp = { 
-        id: Date.now(), 
-        name, 
-        creditDays: parsedCreditDays, 
-        outstanding: parsedOpeningBal, 
-        bankName, 
-        accountNo, 
-        ifsc, 
-        upi 
-    };
-    db.companies.push(newComp);
+app.post('/api/company', async (req, res) => {
+    try {
+        const { name, creditDays, openingBalance, bankName, accountNo, ifsc, upi } = req.body;
+        const parsedCreditDays = parseInt(creditDays) || 0;
+        const parsedOpeningBal = parseFloat(openingBalance) || 0;
+        const compId = Date.now();
+        
+        const newComp = { 
+            id: compId, 
+            name, 
+            credit_days: parsedCreditDays, 
+            outstanding: parsedOpeningBal, 
+            bank_name: bankName, 
+            account_no: accountNo, 
+            ifsc, 
+            upi 
+        };
 
-    if (parsedOpeningBal > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        db.bills.push({
-            id: Date.now() + 1,
-            companyName: name,
-            billNo: "OPENING-BAL",
-            date: today,
-            totalAmount: parsedOpeningBal,
-            paidAmount: 0,
-            balanceDue: parsedOpeningBal,
-            dueDate: today,
-            status: "Unpaid"
-        });
+        const { error: insertErr } = await supabase.from('companies').insert([newComp]);
+        if (insertErr) throw insertErr;
+
+        if (parsedOpeningBal > 0) {
+            const today = new Date().toISOString().split('T')[0];
+            const newBill = {
+                id: Date.now() + 1,
+                company_name: name,
+                bill_no: "OPENING-BAL",
+                date: today,
+                total_amount: parsedOpeningBal,
+                paid_amount: 0,
+                balance_due: parsedOpeningBal,
+                due_date: today,
+                status: "Unpaid"
+            };
+            const { error: billErr } = await supabase.from('bills').insert([newBill]);
+            if (billErr) throw billErr;
+        }
+
+        res.json({ success: true, company: { id: compId, name, creditDays: parsedCreditDays, outstanding: parsedOpeningBal, bankName, accountNo, ifsc, upi } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    saveDB();
-    res.json({ success: true, company: newComp });
 });
 
 // Edit Company Details
-app.put('/api/company/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { name, creditDays, bankName, accountNo, ifsc, upi } = req.body;
-    const company = db.companies.find(c => c.id === id);
-    if (!company) return res.status(404).json({ error: "Company not found" });
+app.put('/api/company/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { name, creditDays, bankName, accountNo, ifsc, upi } = req.body;
+        
+        const { data: existing, error: fetchErr } = await supabase.from('companies').select('*').eq('id', id).single();
+        if (fetchErr || !existing) return res.status(404).json({ error: "Company not found" });
 
-    const oldName = company.name;
-    const newName = name || oldName;
+        const oldName = existing.name;
+        const newName = name || oldName;
 
-    if (oldName !== newName) {
-        db.bills.forEach(b => { if (b.companyName === oldName) b.companyName = newName; });
-        db.payments.forEach(p => { if (p.companyName === oldName) p.companyName = newName; });
+        if (oldName !== newName) {
+            await supabase.from('bills').update({ company_name: newName }).eq('company_name', oldName);
+            await supabase.from('payments').update({ company_name: newName }).eq('company_name', oldName);
+        }
+
+        const updatedData = {
+            name: newName,
+            credit_days: creditDays !== undefined ? parseInt(creditDays) : existing.credit_days,
+            bank_name: bankName || existing.bank_name,
+            account_no: accountNo || existing.account_no,
+            ifsc: ifsc || existing.ifsc,
+            upi: upi || existing.upi
+        };
+
+        const { error: updateErr } = await supabase.from('companies').update(updatedData).eq('id', id);
+        if (updateErr) throw updateErr;
+
+        res.json({ success: true, company: { id, ...updatedData } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    company.name = newName;
-    company.creditDays = parseInt(creditDays) !== undefined ? parseInt(creditDays) : company.creditDays;
-    company.bankName = bankName || company.bankName;
-    company.accountNo = accountNo || company.accountNo;
-    company.ifsc = ifsc || company.ifsc;
-    company.upi = upi || company.upi;
-
-    saveDB();
-    res.json({ success: true, company });
 });
 
 // Delete Company
-app.delete('/api/company/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const comp = db.companies.find(c => c.id === id);
-    if (comp) {
-        db.bills = db.bills.filter(b => b.companyName !== comp.name);
-        db.payments = db.payments.filter(p => p.companyName !== comp.name);
-        db.companies = db.companies.filter(c => c.id !== id);
-        saveDB();
+app.delete('/api/company/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { data: comp } = await supabase.from('companies').select('*').eq('id', id).single();
+        if (comp) {
+            await supabase.from('bills').delete().eq('company_name', comp.name);
+            await supabase.from('payments').delete().eq('company_name', comp.name);
+            await supabase.from('companies').delete().eq('id', id);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    res.json({ success: true });
 });
 
 // Add Bill
-app.post('/api/bill', (req, res) => {
-    const { companyName, billNo, date, amount } = req.body;
-    const company = db.companies.find(c => c.name === companyName);
-    if (!company) return res.status(404).json({ error: "Company not found" });
+app.post('/api/bill', async (req, res) => {
+    try {
+        const { companyName, billNo, date, amount } = req.body;
+        const { data: compObj, error: compErr } = await supabase.from('companies').select('*').eq('name', companyName).single();
+        if (compErr || !compObj) return res.status(404).json({ error: "Company not found" });
 
-    const creditDays = company.creditDays !== undefined ? company.creditDays : 30;
-    const billDateObj = new Date(date);
-    billDateObj.setDate(billDateObj.getDate() + creditDays);
-    const dueDate = billDateObj.toISOString().split('T')[0];
+        const creditDays = compObj.credit_days !== undefined ? compObj.credit_days : 30;
+        const billDateObj = new Date(date);
+        billDateObj.setDate(billDateObj.getDate() + creditDays);
+        const dueDate = billDateObj.toISOString().split('T')[0];
+        const parsedAmount = parseFloat(amount);
 
-    const newBill = {
-        id: Date.now(),
-        companyName,
-        billNo,
-        date,
-        totalAmount: parseFloat(amount),
-        paidAmount: 0,
-        balanceDue: parseFloat(amount),
-        dueDate,
-        status: "Unpaid"
-    };
+        const newBill = {
+            id: Date.now(),
+            company_name: companyName,
+            bill_no: billNo,
+            date,
+            total_amount: parsedAmount,
+            paid_amount: 0,
+            balance_due: parsedAmount,
+            due_date: dueDate,
+            status: "Unpaid"
+        };
 
-    db.bills.push(newBill);
-    company.outstanding += parseFloat(amount);
-    saveDB();
+        const { error: insertErr } = await supabase.from('bills').insert([newBill]);
+        if (insertErr) throw insertErr;
 
-    res.json({ success: true, bill: newBill });
+        const newOutstanding = compObj.outstanding + parsedAmount;
+        await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', companyName);
+
+        res.json({ success: true, bill: newBill });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Edit Bill
-app.put('/api/bill/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { billNo, date, amount } = req.body;
-    const bill = db.bills.find(b => b.id === id);
-    if (!bill) return res.status(404).json({ error: "Bill not found" });
+app.put('/api/bill/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { billNo, date, amount } = req.body;
+        
+        const { data: bill, error: billErr } = await supabase.from('bills').select('*').eq('id', id).single();
+        if (billErr || !bill) return res.status(404).json({ error: "Bill not found" });
 
-    const company = db.companies.find(c => c.name === bill.companyName);
-    const creditDays = company && company.creditDays !== undefined ? company.creditDays : 30;
-    const newTotal = parseFloat(amount);
-    const diff = newTotal - bill.totalAmount;
+        const { data: company } = await supabase.from('companies').select('*').eq('name', bill.company_name).single();
+        const creditDays = company && company.credit_days !== undefined ? company.credit_days : 30;
+        const newTotal = parseFloat(amount);
+        const diff = newTotal - bill.total_amount;
 
-    const billDateObj = new Date(date);
-    billDateObj.setDate(billDateObj.getDate() + creditDays);
-    const dueDate = billDateObj.toISOString().split('T')[0];
+        const billDateObj = new Date(date);
+        billDateObj.setDate(billDateObj.getDate() + creditDays);
+        const dueDate = billDateObj.toISOString().split('T')[0];
 
-    bill.billNo = billNo;
-    bill.date = date;
-    bill.totalAmount = newTotal;
-    bill.dueDate = dueDate;
-    bill.balanceDue = newTotal - bill.paidAmount;
+        let balanceDue = newTotal - bill.paid_amount;
+        let status = "Unpaid";
+        if (balanceDue <= 0) {
+            balanceDue = 0;
+            status = "Settled";
+        } else if (bill.paid_amount > 0) {
+            status = "Partial";
+        }
 
-    if (bill.balanceDue <= 0) {
-        bill.balanceDue = 0;
-        bill.status = "Settled";
-    } else if (bill.paidAmount > 0) {
-        bill.status = "Partial";
-    } else {
-        bill.status = "Unpaid";
+        const updateFields = {
+            bill_no: billNo,
+            date,
+            total_amount: newTotal,
+            due_date: dueDate,
+            balance_due: balanceDue,
+            status
+        };
+
+        await supabase.from('bills').update(updateFields).eq('id', id);
+
+        if (company) {
+            let newOutstanding = company.outstanding + diff;
+            if (newOutstanding < 0) newOutstanding = 0;
+            await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', company.name);
+        }
+
+        res.json({ success: true, bill: updateFields });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    if (company) {
-        company.outstanding += diff;
-        if (company.outstanding < 0) company.outstanding = 0;
-    }
-
-    saveDB();
-    res.json({ success: true, bill });
 });
 
 // Delete Bill
-app.delete('/api/bill/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const bill = db.bills.find(b => b.id === id);
-    if (bill) {
-        const company = db.companies.find(c => c.name === bill.companyName);
-        if (company) {
-            company.outstanding -= bill.balanceDue;
-            if (company.outstanding < 0) company.outstanding = 0;
+app.delete('/api/bill/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { data: bill } = await supabase.from('bills').select('*').eq('id', id).single();
+        if (bill) {
+            const { data: company } = await supabase.from('companies').select('*').eq('name', bill.company_name).single();
+            if (company) {
+                let newOutstanding = company.outstanding - bill.balance_due;
+                if (newOutstanding < 0) newOutstanding = 0;
+                await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', company.name);
+            }
+            await supabase.from('payments').delete().eq('bill_id', bill.id);
+            await supabase.from('bills').delete().eq('id', id);
         }
-        db.payments = db.payments.filter(p => p.billId !== bill.id);
-        db.bills = db.bills.filter(b => b.id !== id);
-        saveDB();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    res.json({ success: true });
 });
 
 // Payment / Credit Note Allocation
-app.post('/api/payment', (req, res) => {
-    const { companyName, paymentAmount, paymentDate, paymentMode, remark } = req.body;
-    let payAmt = parseFloat(paymentAmount);
+app.post('/api/payment', async (req, res) => {
+    try {
+        const { companyName, paymentAmount, paymentDate, paymentMode, remark } = req.body;
+        let payAmt = parseFloat(paymentAmount);
 
-    if (!companyName || isNaN(payAmt) || payAmt <= 0) {
-        return res.status(400).json({ error: "Invalid payment or credit details" });
-    }
-
-    const company = db.companies.find(c => c.name === companyName);
-    if (!company) return res.status(404).json({ error: "Company not found" });
-
-    let companyBills = db.bills
-        .filter(b => b.companyName === companyName && b.status !== 'Settled')
-        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-    let totalPaidApplied = payAmt;
-
-    for (let bill of companyBills) {
-        if (payAmt <= 0) break;
-
-        let allocateAmt = Math.min(payAmt, bill.balanceDue);
-        bill.paidAmount += allocateAmt;
-        bill.balanceDue -= allocateAmt;
-        payAmt -= allocateAmt;
-
-        if (bill.balanceDue <= 0) {
-            bill.balanceDue = 0;
-            bill.status = "Settled";
-        } else {
-            bill.status = "Partial";
+        if (!companyName || isNaN(payAmt) || payAmt <= 0) {
+            return res.status(400).json({ error: "Invalid payment or credit details" });
         }
 
-        db.payments.push({
-            id: Date.now() + Math.floor(Math.random() * 10000),
-            billId: bill.id,
-            companyName: companyName,
-            billNo: bill.billNo,
-            amount: allocateAmt,
-            date: paymentDate,
-            mode: paymentMode,
-            remark: remark || (paymentMode === 'Credit Note / Discount' ? 'Company Discount' : 'Auto-allocated (FIFO)')
-        });
+        const { data: company, error: compErr } = await supabase.from('companies').select('*').eq('name', companyName).single();
+        if (compErr || !company) return res.status(404).json({ error: "Company not found" });
+
+        let { data: companyBills, error: billsErr } = await supabase
+            .from('bills')
+            .select('*')
+            .eq('company_name', companyName)
+            .neq('status', 'Settled');
+
+        if (billsErr) throw billsErr;
+
+        companyBills.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+
+        let totalPaidApplied = payAmt;
+
+        for (let bill of companyBills) {
+            if (payAmt <= 0) break;
+
+            let allocateAmt = Math.min(payAmt, bill.balance_due);
+            let newPaidAmount = bill.paid_amount + allocateAmt;
+            let newBalanceDue = bill.balance_due - allocateAmt;
+            payAmt -= allocateAmt;
+
+            let status = "Partial";
+            if (newBalanceDue <= 0) {
+                newBalanceDue = 0;
+                status = "Settled";
+            }
+
+            await supabase.from('bills').update({
+                paid_amount: newPaidAmount,
+                balance_due: newBalanceDue,
+                status: status
+            }).eq('id', bill.id);
+
+            const newPayment = {
+                id: Date.now() + Math.floor(Math.random() * 10000),
+                bill_id: bill.id,
+                company_name: companyName,
+                bill_no: bill.bill_no,
+                amount: allocateAmt,
+                date: paymentDate,
+                mode: paymentMode,
+                remark: remark || (paymentMode === 'Credit Note / Discount' ? 'Company Discount' : 'Auto-allocated (FIFO)')
+            };
+            await supabase.from('payments').insert([newPayment]);
+        }
+
+        let newOutstanding = company.outstanding - totalPaidApplied;
+        if (newOutstanding < 0) newOutstanding = 0;
+        await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', companyName);
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    company.outstanding -= totalPaidApplied;
-    if (company.outstanding < 0) company.outstanding = 0;
-
-    saveDB();
-    res.json({ success: true });
 });
 
 // Edit Payment / Credit Note
-app.put('/api/payment/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { paymentAmount, paymentDate, remark } = req.body;
-    const payment = db.payments.find(p => p.id === id);
-    if (!payment) return res.status(404).json({ error: "Record not found" });
+app.put('/api/payment/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { paymentAmount, paymentDate, remark } = req.body;
+        
+        const { data: payment, error: payErr } = await supabase.from('payments').select('*').eq('id', id).single();
+        if (payErr || !payment) return res.status(404).json({ error: "Record not found" });
 
-    const bill = db.bills.find(b => b.id === payment.billId);
-    const newPayAmt = parseFloat(paymentAmount);
-    const diff = newPayAmt - payment.amount;
+        const { data: bill } = await supabase.from('bills').select('*').eq('id', payment.bill_id).single();
+        const newPayAmt = parseFloat(paymentAmount);
+        const diff = newPayAmt - payment.amount;
 
-    if (bill) {
-        bill.paidAmount += diff;
-        bill.balanceDue -= diff;
-        if (bill.balanceDue <= 0) {
-            bill.balanceDue = 0;
-            bill.status = "Settled";
-        } else if (bill.paidAmount > 0) {
-            bill.status = "Partial";
-        } else {
-            bill.status = "Unpaid";
+        if (bill) {
+            let newPaidAmount = bill.paid_amount + diff;
+            let newBalanceDue = bill.balance_due - diff;
+            let status = "Unpaid";
+            if (newBalanceDue <= 0) {
+                newBalanceDue = 0;
+                status = "Settled";
+            } else if (newPaidAmount > 0) {
+                status = "Partial";
+            }
+
+            await supabase.from('bills').update({
+                paid_amount: newPaidAmount,
+                balance_due: newBalanceDue,
+                status: status
+            }).eq('id', bill.id);
         }
+
+        const { data: company } = await supabase.from('companies').select('*').eq('name', payment.company_name).single();
+        if (company) {
+            let newOutstanding = company.outstanding - diff;
+            if (newOutstanding < 0) newOutstanding = 0;
+            await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', company.name);
+        }
+
+        const updateData = {
+            amount: newPayAmt,
+            date: paymentDate,
+            remark: remark || payment.remark
+        };
+        await supabase.from('payments').update(updateData).eq('id', id);
+
+        res.json({ success: true, payment: updateData });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    const company = db.companies.find(c => c.name === payment.companyName);
-    if (company) {
-        company.outstanding -= diff;
-        if (company.outstanding < 0) company.outstanding = 0;
-    }
-
-    payment.amount = newPayAmt;
-    payment.date = paymentDate;
-    payment.remark = remark || payment.remark;
-
-    saveDB();
-    res.json({ success: true, payment });
 });
 
 // Delete Payment / Credit Note
-app.delete('/api/payment/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const paymentIndex = db.payments.findIndex(p => p.id === id);
-    if (paymentIndex === -1) return res.status(404).json({ error: "Record not found" });
+app.delete('/api/payment/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { data: payment, error: payErr } = await supabase.from('payments').select('*').eq('id', id).single();
+        if (payErr || !payment) return res.status(404).json({ error: "Record not found" });
 
-    const payment = db.payments[paymentIndex];
-    const bill = db.bills.find(b => b.id === payment.billId);
+        const { data: bill } = await supabase.from('bills').select('*').eq('id', payment.bill_id).single();
 
-    if (bill) {
-        bill.paidAmount -= payment.amount;
-        bill.balanceDue += payment.amount;
-        if (bill.balanceDue > 0 && bill.paidAmount > 0) {
-            bill.status = "Partial";
-        } else if (bill.paidAmount === 0) {
-            bill.status = "Unpaid";
+        if (bill) {
+            let newPaidAmount = bill.paid_amount - payment.amount;
+            let newBalanceDue = bill.balance_due + payment.amount;
+            let status = "Unpaid";
+            if (newBalanceDue > 0 && newPaidAmount > 0) {
+                status = "Partial";
+            } else if (newPaidAmount === 0) {
+                status = "Unpaid";
+            }
+
+            await supabase.from('bills').update({
+                paid_amount: newPaidAmount,
+                balance_due: newBalanceDue,
+                status: status
+            }).eq('id', bill.id);
         }
-    }
 
-    const company = db.companies.find(c => c.name === payment.companyName);
-    if (company) {
-        company.outstanding += payment.amount;
-    }
+        const { data: company } = await supabase.from('companies').select('*').eq('name', payment.company_name).single();
+        if (company) {
+            let newOutstanding = company.outstanding + payment.amount;
+            await supabase.from('companies').update({ outstanding: newOutstanding }).eq('name', company.name);
+        }
 
-    db.payments.splice(paymentIndex, 1);
-    saveDB();
-    res.json({ success: true });
+        await supabase.from('payments').delete().eq('id', id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.listen(PORT, () => {
