@@ -454,6 +454,12 @@ app.delete('/api/payment/:id', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Karippurath Agencies Tracker running on port ${PORT}`);
-});
+// Local Development Server listener
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Karippurath Agencies Tracker running on port ${PORT}`);
+    });
+}
+
+// Export app for Vercel Serverless Functions
+module.exports = app;
