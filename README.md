@@ -4,7 +4,7 @@ A full-stack, multi-tenant ledger and dues management web application designed f
 
 ## Shop Due Tracker and Ledger Management
 
-🌐 Live App: https://karippurath-tracker.vercel.app  
+  
 🔗 New Link: https://shopledgermangement.vercel.app/
 
 ---
