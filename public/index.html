@@ -200,21 +200,21 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs font-bold text-gray-600">Bank Name</label>
-                        <input type="text" id="edit_bank_name" required class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_bank_name" class="w-full p-2 border rounded text-sm mt-1">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-600">Account No</label>
-                        <input type="text" id="edit_account_no" required class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_account_no" class="w-full p-2 border rounded text-sm mt-1">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs font-bold text-gray-600">IFSC Code</label>
-                        <input type="text" id="edit_ifsc" required class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_ifsc" class="w-full p-2 border rounded text-sm mt-1">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-600">UPI ID</label>
-                        <input type="text" id="edit_upi" required class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_upi" class="w-full p-2 border rounded text-sm mt-1">
                     </div>
                 </div>
                 <div class="flex gap-2 pt-2">
@@ -310,21 +310,12 @@
             document.getElementById('deleteModalMessage').innerText = message;
             
             pendingDeleteAction = onConfirm;
-            const btn = document.getElementById('confirmDeleteSubmitBtn');
-            btn.disabled = false;
-            btn.innerText = "Yes, Delete";
-
-            btn.onclick = async () => {
+            document.getElementById('confirmDeleteSubmitBtn').onclick = async () => {
                 if (pendingDeleteAction) {
                     const action = pendingDeleteAction;
                     pendingDeleteAction = null;
-                    btn.disabled = true;
-                    btn.innerText = "Deleting...";
-                    try {
-                        await action();
-                    } finally {
-                        closeDeleteConfirmModal();
-                    }
+                    closeDeleteConfirmModal();
+                    await action();
                 } else {
                     closeDeleteConfirmModal();
                 }
@@ -604,12 +595,12 @@
 
         function openEditCompany(compId, e) {
             if (e) e.stopPropagation();
-            const comp = allData.companies.find(c => c.id === compId);
+            const comp = allData.companies.find(c => String(c.id) === String(compId));
             if (!comp) return;
 
             document.getElementById('edit_comp_id').value = comp.id;
-            document.getElementById('edit_comp_name').value = comp.name;
-            document.getElementById('edit_comp_credit').value = comp.creditDays;
+            document.getElementById('edit_comp_name').value = comp.name || '';
+            document.getElementById('edit_comp_credit').value = comp.creditDays !== undefined ? comp.creditDays : '';
             document.getElementById('edit_bank_name').value = comp.bankName || '';
             document.getElementById('edit_account_no').value = comp.accountNo || '';
             document.getElementById('edit_ifsc').value = comp.ifsc || '';
@@ -625,6 +616,9 @@
         async function saveEditCompany(e) {
             e.preventDefault();
             const id = document.getElementById('edit_comp_id').value;
+            const oldComp = allData.companies.find(c => String(c.id) === String(id));
+            const oldName = oldComp ? oldComp.name : null;
+
             const data = {
                 name: document.getElementById('edit_comp_name').value.trim(),
                 creditDays: document.getElementById('edit_comp_credit').value,
@@ -634,18 +628,27 @@
                 upi: document.getElementById('edit_upi').value.trim()
             };
 
-            const res = await fetch(`/api/company/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+            try {
+                const res = await fetch(`/api/company/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
 
-            if (res.ok) {
-                closeEditCompanyModal();
-                loadDashboard();
-            } else {
-                const err = await res.json();
-                alert('Error updating company: ' + (err.error || 'Failed'));
+                if (res.ok) {
+                    if (activeModalCompany && oldName && activeModalCompany === oldName) {
+                        activeModalCompany = data.name;
+                        const titleEl = document.getElementById('modalTitle');
+                        if (titleEl) titleEl.innerText = `${data.name} - Bills & Payments`;
+                    }
+                    closeEditCompanyModal();
+                    await loadDashboard();
+                } else {
+                    const err = await res.json();
+                    alert('Error updating company: ' + (err.error || 'Failed to update'));
+                }
+            } catch (err) {
+                alert('Error updating company: ' + err.message);
             }
         }
 
