@@ -4,11 +4,14 @@
   "description": "Dues Tracker for Karippurath Agencies",
   "main": "server.js",
   "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'No build step required'",
     "start": "node server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",
     "body-parser": "^1.20.2",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "nodemailer": "^9.0.5"
   }
 }
