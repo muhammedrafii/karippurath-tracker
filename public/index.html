@@ -10,9 +10,29 @@
 
     <div class="container mx-auto p-4 max-w-6xl">
         <!-- Header -->
-        <header class="bg-blue-700 text-white p-4 rounded-lg shadow-md flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">🔧 Karippurath Agencies - Dues Tracker</h1>
-            <span class="text-sm bg-blue-800 px-3 py-1 rounded">Live Dashboard</span>
+        <header class="bg-blue-700 text-white p-4 rounded-lg shadow-md flex flex-wrap justify-between items-center gap-3 mb-6">
+            <div class="flex items-center gap-2">
+                <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                    🔧 <span id="headerShopName">Plumbing Shop</span> - Dues Tracker
+                </h1>
+            </div>
+
+            <!-- User / Shop Controls -->
+            <div id="authHeaderControls" class="flex flex-wrap items-center gap-2">
+                <div id="userBadgeSection" class="text-right bg-blue-800/80 px-3 py-1 rounded border border-blue-600">
+                    <div class="text-xs text-blue-200">Owner: <span id="headerOwnerName" class="font-bold text-white">Not Logged In</span></div>
+                    <div class="text-xs text-blue-300">Email: <span id="headerEmail" class="font-bold text-yellow-300">Guest</span></div>
+                </div>
+                <button onclick="openShopSettingsModal()" class="text-xs bg-blue-900 hover:bg-black text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 border border-blue-500 shadow-sm transition">
+                    ⚙️ Shop Credentials
+                </button>
+                <button onclick="openAuthModal()" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 shadow-sm transition">
+                    🏪 Switch / Register Shop
+                </button>
+                <button id="logoutBtn" onclick="logoutShop()" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 shadow-sm transition">
+                    🚪 Logout
+                </button>
+            </div>
         </header>
 
         <!-- Summary Cards -->
@@ -118,11 +138,11 @@
     </div>
 
     <!-- Company Details & Bills Modal -->
-    <div id="billModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-40">
-        <div class="bg-white rounded-lg max-w-5xl w-full p-5 max-h-[90vh] overflow-y-auto shadow-xl">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 id="modalTitle" class="font-bold text-xl text-blue-700">Company Bills & Payments</h3>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+    <div id="billModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-40 overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-5xl w-full p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-200">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 id="modalTitle" class="font-bold text-lg sm:text-xl text-blue-700">Company Bills & Payments</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
 
             <!-- Action Tabs / Forms Grid in Modal -->
@@ -132,20 +152,20 @@
                     <h4 class="font-bold text-xs text-blue-900 mb-2">💸 Record Payment (FIFO Settlement)</h4>
                     <form id="generalPaymentForm" onsubmit="makeCompanyPayment(event, 'Payment')" class="space-y-2">
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="gen_pay_amt" placeholder="Amount (₹)" required class="p-1.5 border rounded text-xs bg-white">
-                            <input type="date" id="gen_pay_date" required class="p-1.5 border rounded text-xs bg-white">
+                            <input type="number" id="gen_pay_amt" placeholder="Amount (₹)" required class="p-2 border rounded text-xs bg-white">
+                            <input type="date" id="gen_pay_date" required class="p-2 border rounded text-xs bg-white">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <select id="gen_pay_mode" class="p-1.5 border rounded text-xs bg-white">
+                            <select id="gen_pay_mode" class="p-2 border rounded text-xs bg-white">
                                 <option value="NEFT">NEFT</option>
                                 <option value="GPay">GPay</option>
                                 <option value="RTGS">RTGS</option>
                                 <option value="Cash">Cash</option>
                                 <option value="Cheque">Cheque</option>
                             </select>
-                            <input type="text" id="gen_pay_remark" placeholder="Remark / Txn ID" class="p-1.5 border rounded text-xs bg-white">
+                            <input type="text" id="gen_pay_remark" placeholder="Remark / Txn ID" class="p-2 border rounded text-xs bg-white">
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white p-1.5 rounded text-xs font-bold hover:bg-blue-700">Apply Payment</button>
+                        <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded text-xs font-bold hover:bg-blue-700 transition">Apply Payment</button>
                     </form>
                 </div>
 
@@ -154,11 +174,11 @@
                     <h4 class="font-bold text-xs text-purple-900 mb-2">🎁 Record Company Discount / Credit Note</h4>
                     <form id="discountForm" onsubmit="makeCompanyPayment(event, 'Credit Note / Discount')" class="space-y-2">
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="disc_amt" placeholder="Discount Amount (₹)" required class="p-1.5 border rounded text-xs bg-white">
-                            <input type="date" id="disc_date" required class="p-1.5 border rounded text-xs bg-white">
+                            <input type="number" id="disc_amt" placeholder="Discount Amount (₹)" required class="p-2 border rounded text-xs bg-white">
+                            <input type="date" id="disc_date" required class="p-2 border rounded text-xs bg-white">
                         </div>
-                        <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-1.5 border rounded text-xs bg-white">
-                        <button type="submit" class="w-full bg-purple-600 text-white p-1.5 rounded text-xs font-bold hover:bg-purple-700">Apply Credit Note / Discount</button>
+                        <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-2 border rounded text-xs bg-white">
+                        <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded text-xs font-bold hover:bg-purple-700 transition">Apply Credit Note / Discount</button>
                     </form>
                 </div>
             </div>
@@ -181,111 +201,111 @@
     </div>
 
     <!-- Edit Company Modal -->
-    <div id="editCompanyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-lg max-w-lg w-full p-5 shadow-xl">
+    <div id="editCompanyModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-lg w-full p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-200">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="font-bold text-xl text-blue-700">✏️ Edit Distributor Profile</h3>
-                <button onclick="closeEditCompanyModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+                <h3 class="font-bold text-lg sm:text-xl text-blue-700">✏️ Edit Distributor Profile</h3>
+                <button onclick="closeEditCompanyModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
             <form id="editCompanyForm" onsubmit="saveEditCompany(event)" class="space-y-3">
                 <input type="hidden" id="edit_comp_id">
                 <div>
                     <label class="text-xs font-bold text-gray-600">Company Name</label>
-                    <input type="text" id="edit_comp_name" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="text" id="edit_comp_name" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600">Credit Days</label>
-                    <input type="number" id="edit_comp_credit" min="0" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="number" id="edit_comp_credit" min="0" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs font-bold text-gray-600">Bank Name</label>
-                        <input type="text" id="edit_bank_name" class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_bank_name" class="w-full p-2 border rounded-lg text-sm mt-1">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-600">Account No</label>
-                        <input type="text" id="edit_account_no" class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_account_no" class="w-full p-2 border rounded-lg text-sm mt-1">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs font-bold text-gray-600">IFSC Code</label>
-                        <input type="text" id="edit_ifsc" class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_ifsc" class="w-full p-2 border rounded-lg text-sm mt-1">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-600">UPI ID</label>
-                        <input type="text" id="edit_upi" class="w-full p-2 border rounded text-sm mt-1">
+                        <input type="text" id="edit_upi" class="w-full p-2 border rounded-lg text-sm mt-1">
                     </div>
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Update Profile</button>
-                    <button type="button" onclick="closeEditCompanyModal()" class="w-full bg-gray-300 text-gray-700 p-2 rounded font-bold hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-lg font-bold hover:bg-blue-700 text-sm">Update Profile</button>
+                    <button type="button" onclick="closeEditCompanyModal()" class="w-full bg-gray-200 text-gray-700 p-2.5 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Edit Bill Modal -->
-    <div id="editBillModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-lg max-w-md w-full p-5 shadow-xl">
+    <div id="editBillModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-md w-full p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-200">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="font-bold text-xl text-blue-700">✏️ Edit Bill Details</h3>
-                <button onclick="closeEditBillModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+                <h3 class="font-bold text-lg sm:text-xl text-blue-700">✏️ Edit Bill Details</h3>
+                <button onclick="closeEditBillModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
             <form id="editBillForm" onsubmit="saveEditBill(event)" class="space-y-3">
                 <input type="hidden" id="edit_bill_id">
                 <div>
                     <label class="text-xs font-bold text-gray-600">Bill Number</label>
-                    <input type="text" id="edit_bill_no" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="text" id="edit_bill_no" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600">Bill Date</label>
-                    <input type="date" id="edit_bill_date" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="date" id="edit_bill_date" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600">Total Bill Amount (₹)</label>
-                    <input type="number" id="edit_bill_amount" min="0" step="any" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="number" id="edit_bill_amount" min="0" step="any" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Save Changes</button>
-                    <button type="button" onclick="closeEditBillModal()" class="w-full bg-gray-300 text-gray-700 p-2 rounded font-bold hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-lg font-bold hover:bg-blue-700 text-sm">Save Changes</button>
+                    <button type="button" onclick="closeEditBillModal()" class="w-full bg-gray-200 text-gray-700 p-2.5 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Edit Payment Modal -->
-    <div id="editPaymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-lg max-w-md w-full p-5 shadow-xl">
+    <div id="editPaymentModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-md w-full p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-200">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="font-bold text-xl text-purple-700">✏️ Edit Payment / Discount</h3>
-                <button onclick="closeEditPaymentModal()" class="text-gray-500 hover:text-black font-bold text-lg">✕</button>
+                <h3 class="font-bold text-lg sm:text-xl text-purple-700">✏️ Edit Payment / Discount</h3>
+                <button onclick="closeEditPaymentModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
             <form id="editPaymentForm" onsubmit="saveEditPayment(event)" class="space-y-3">
                 <input type="hidden" id="edit_pay_id">
                 <div>
                     <label class="text-xs font-bold text-gray-600">Amount (₹)</label>
-                    <input type="number" id="edit_pay_amount" min="0" step="any" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="number" id="edit_pay_amount" min="0" step="any" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600">Date</label>
-                    <input type="date" id="edit_pay_date" required class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="date" id="edit_pay_date" required class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600">Remark / Txn Details</label>
-                    <input type="text" id="edit_pay_remark" class="w-full p-2 border rounded text-sm mt-1">
+                    <input type="text" id="edit_pay_remark" class="w-full p-2.5 border rounded-lg text-sm mt-1">
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded font-bold hover:bg-purple-700">Update Record</button>
-                    <button type="button" onclick="closeEditPaymentModal()" class="w-full bg-gray-300 text-gray-700 p-2 rounded font-bold hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="w-full bg-purple-600 text-white p-2.5 rounded-lg font-bold hover:bg-purple-700 text-sm">Update Record</button>
+                    <button type="button" onclick="closeEditPaymentModal()" class="w-full bg-gray-200 text-gray-700 p-2.5 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Custom Delete Confirmation Modal -->
-    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 text-center space-y-4">
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-sm w-full p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 text-center space-y-4">
             <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
                 🗑️
             </div>
@@ -294,8 +314,195 @@
                 <p class="text-xs text-gray-600 mt-1 leading-relaxed" id="deleteModalMessage">Are you sure you want to delete this item?</p>
             </div>
             <div class="flex gap-2 pt-2">
-                <button type="button" onclick="closeDeleteConfirmModal()" class="w-1/2 bg-gray-200 text-gray-800 py-2 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
-                <button type="button" id="confirmDeleteSubmitBtn" class="w-1/2 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 text-sm shadow">Yes, Delete</button>
+                <button type="button" onclick="closeDeleteConfirmModal()" class="w-1/2 bg-gray-200 text-gray-800 py-2.5 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
+                <button type="button" id="confirmDeleteSubmitBtn" class="w-1/2 bg-red-600 text-white py-2.5 rounded-lg font-bold hover:bg-red-700 text-sm shadow">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register / Switch Shop Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black/75 backdrop-blur-xs hidden flex justify-center items-center p-2 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 my-auto max-h-[94vh] flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/90 shrink-0">
+                <div>
+                    <h3 class="font-bold text-lg sm:text-xl text-blue-900">🏪 Shop Portal</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">Log in or create a private shop ledger database.</p>
+                </div>
+                <button onclick="closeAuthModal()" class="text-gray-400 hover:text-gray-700 text-xl font-bold p-1 rounded-lg hover:bg-gray-200/60 transition">✕</button>
+            </div>
+
+            <!-- Modal Content (Scrollable Container) -->
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                <!-- Simplified 2 Main Auth Tabs -->
+                <div class="flex border-b border-gray-200 text-sm font-bold gap-2">
+                    <button id="tabLoginBtn" type="button" onclick="switchAuthTab('login')" class="flex-1 py-2.5 px-2 text-center text-blue-700 border-b-2 border-blue-700 transition">
+                        🔑 Sign In
+                    </button>
+                    <button id="tabRegisterBtn" type="button" onclick="switchAuthTab('register')" class="flex-1 py-2.5 px-2 text-center text-gray-500 border-b-2 border-transparent hover:text-green-700 transition">
+                        ➕ Register Shop
+                    </button>
+                </div>
+
+                <!-- 1. Password Login Form -->
+                <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Registered Email ID *</label>
+                        <input type="email" id="login_email" placeholder="e.g. shop@example.com" required class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Password *</label>
+                        <input type="password" id="login_password" placeholder="Enter shop password" required class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-700 text-white py-3 rounded-lg font-bold text-sm hover:bg-blue-800 shadow transition active:scale-[0.99]">
+                        Sign In To Shop
+                    </button>
+
+                    <div class="pt-2 border-t border-gray-100 flex flex-wrap justify-between items-center text-xs gap-2">
+                        <button type="button" onclick="switchAuthTab('otp-login')" class="text-blue-700 font-bold hover:underline flex items-center gap-1">
+                            📲 Login with Email OTP
+                        </button>
+                        <button type="button" onclick="switchAuthTab('forgot')" class="text-red-600 font-bold hover:underline flex items-center gap-1">
+                            🔒 Forgot Password?
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 2. Email OTP Login Form -->
+                <form id="otpLoginForm" onsubmit="handleOtpLoginSubmit(event)" class="space-y-4 hidden">
+                    <div class="flex justify-between items-center bg-blue-50 p-2.5 rounded-lg text-xs font-bold text-blue-800 border border-blue-100">
+                        <span>📲 Login via Email OTP</span>
+                        <button type="button" onclick="switchAuthTab('login')" class="text-blue-900 underline hover:text-black">
+                            ⬅ Back to Password
+                        </button>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Registered Email ID *</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="email" id="otp_login_email" placeholder="e.g. shop@example.com" class="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <button type="button" onclick="requestOtpForLogin()" class="bg-blue-800 text-white text-xs px-3 py-2.5 rounded-lg font-bold hover:bg-blue-900 shrink-0">
+                                Send OTP
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="otp_login_status" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Enter 6-Digit OTP Code *</label>
+                        <input type="text" id="otp_login_code" placeholder="6-digit code" maxlength="6" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono tracking-widest text-center focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-700 text-white py-3 rounded-lg font-bold text-sm hover:bg-blue-800 shadow transition active:scale-[0.99]">
+                        Verify OTP & Sign In
+                    </button>
+                </form>
+
+                <!-- 3. Forgot Password Form -->
+                <form id="forgotPasswordForm" onsubmit="handleResetPasswordSubmit(event)" class="space-y-4 hidden">
+                    <div class="flex justify-between items-center bg-red-50 p-2.5 rounded-lg text-xs font-bold text-red-800 border border-red-100">
+                        <span>🔒 Password Recovery</span>
+                        <button type="button" onclick="switchAuthTab('login')" class="text-red-900 underline hover:text-black">
+                            ⬅ Back to Password
+                        </button>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Registered Email ID *</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="email" id="forgot_email" placeholder="e.g. shop@example.com" class="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500">
+                            <button type="button" onclick="requestOtpForForgot()" class="bg-red-700 text-white text-xs px-3 py-2.5 rounded-lg font-bold hover:bg-red-800 shrink-0">
+                                Send Reset OTP
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="forgot_otp_status" class="hidden p-2.5 rounded-lg text-xs font-medium"></div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Enter 6-Digit OTP Code *</label>
+                        <input type="text" id="forgot_otp_code" placeholder="6-digit code" maxlength="6" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-mono tracking-widest text-center focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Set New Password *</label>
+                        <input type="password" id="forgot_new_password" placeholder="Minimum 4 characters" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <button type="submit" class="w-full bg-red-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-red-700 shadow transition active:scale-[0.99]">
+                        Reset Password & Continue
+                    </button>
+                </form>
+
+                <!-- 4. Register Form (Hidden by default) -->
+                <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-3.5 hidden">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Shop Name *</label>
+                        <input type="text" id="reg_shop_name" placeholder="e.g. Grand Plumbing Depot" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Owner / Manager Name</label>
+                        <input type="text" id="reg_owner_name" placeholder="e.g. Muhammed Rafi" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Email ID *</label>
+                        <input type="email" id="reg_email" placeholder="e.g. shop@example.com" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Create Password *</label>
+                        <input type="password" id="reg_password" placeholder="Min 4 characters" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <div class="bg-green-50 p-2.5 rounded-lg border border-green-200 text-xs text-green-800 leading-relaxed">
+                        🔒 Protected Database: Your shop data stays isolated and secure in Supabase.
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-green-700 shadow transition active:scale-[0.99]">
+                        Create & Launch Shop
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Settings / Update Credentials Modal -->
+    <div id="shopSettingsModal" class="fixed inset-0 bg-black/75 backdrop-blur-xs hidden flex justify-center items-center p-2 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 my-auto max-h-[94vh] flex flex-col overflow-hidden">
+            <div class="p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/90 shrink-0">
+                <h3 class="font-bold text-lg sm:text-xl text-blue-900">⚙️ Edit Shop Profile & Password</h3>
+                <button onclick="closeShopSettingsModal()" class="text-gray-400 hover:text-gray-700 text-xl font-bold p-1 rounded-lg">✕</button>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1">
+                <form id="shopSettingsForm" onsubmit="handleUpdateShopCredentials(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Shop Name *</label>
+                        <input type="text" id="setting_shop_name" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Owner Name</label>
+                        <input type="text" id="setting_owner_name" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Shop Email ID *</label>
+                        <input type="email" id="setting_email" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">New Password <span class="text-gray-400 font-normal">(Leave blank to keep current)</span></label>
+                        <input type="password" id="setting_password" placeholder="••••••••" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm">
+                    </div>
+
+                    <div class="flex gap-2 pt-3">
+                        <button type="submit" class="w-1/2 bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-blue-800 shadow transition">
+                            Save Changes
+                        </button>
+                        <button type="button" onclick="closeShopSettingsModal()" class="w-1/2 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -304,6 +511,403 @@
         let allData = { companies: [], bills: [], payments: [], metrics: {} };
         let activeModalCompany = null;
         let pendingDeleteAction = null;
+
+        // --- Shop Auth & Session Helpers ---
+        function getShopToken() {
+            return localStorage.getItem('shop_token') || '';
+        }
+
+        function setShopToken(token) {
+            localStorage.setItem('shop_token', token);
+        }
+
+        function removeShopToken() {
+            localStorage.removeItem('shop_token');
+        }
+
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + getShopToken()
+            };
+        }
+
+        let currentShopProfile = null;
+
+        async function checkAuthStatus() {
+            const token = getShopToken();
+            if (!token) {
+                currentShopProfile = null;
+                document.getElementById('headerShopName').innerText = 'Plumbing Shop';
+                document.getElementById('headerOwnerName').innerText = 'Not Logged In';
+                document.getElementById('headerEmail').innerText = 'Guest';
+                return false;
+            }
+
+            try {
+                const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    removeShopToken();
+                    currentShopProfile = null;
+                    document.getElementById('headerShopName').innerText = 'Plumbing Shop';
+                    document.getElementById('headerOwnerName').innerText = 'Not Logged In';
+                    document.getElementById('headerEmail').innerText = 'Guest';
+                    return false;
+                }
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) return false;
+                const data = await res.json();
+                if (data.authenticated && data.shop) {
+                    currentShopProfile = data.shop;
+                    document.getElementById('headerShopName').innerText = data.shop.shopName || 'My Shop';
+                    document.getElementById('headerOwnerName').innerText = data.shop.ownerName || '-';
+                    document.getElementById('headerEmail').innerText = data.shop.email || '-';
+                    
+                    // Pre-fill settings modal
+                    document.getElementById('setting_shop_name').value = data.shop.shopName || '';
+                    document.getElementById('setting_owner_name').value = data.shop.ownerName || '';
+                    document.getElementById('setting_email').value = data.shop.email || '';
+                    return true;
+                } else {
+                    removeShopToken();
+                    currentShopProfile = null;
+                    document.getElementById('headerShopName').innerText = 'Plumbing Shop';
+                    document.getElementById('headerOwnerName').innerText = 'Not Logged In';
+                    document.getElementById('headerEmail').innerText = 'Guest';
+                    return false;
+                }
+            } catch (err) {
+                console.error("Auth status check failed:", err);
+                currentShopProfile = null;
+                document.getElementById('headerShopName').innerText = 'Plumbing Shop';
+                document.getElementById('headerOwnerName').innerText = 'Not Logged In';
+                document.getElementById('headerEmail').innerText = 'Guest';
+                return false;
+            }
+        }
+
+        function openAuthModal() {
+            document.getElementById('authModal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            if (!currentShopProfile) {
+                alert("Please log in or register a shop to access the dues tracker.");
+                return;
+            }
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const otpLoginForm = document.getElementById('otpLoginForm');
+            const forgotForm = document.getElementById('forgotPasswordForm');
+            const regForm = document.getElementById('registerForm');
+
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabRegBtn = document.getElementById('tabRegisterBtn');
+
+            [loginForm, otpLoginForm, forgotForm, regForm].forEach(f => {
+                if (f) f.classList.add('hidden');
+            });
+
+            if (tabLoginBtn) tabLoginBtn.className = "flex-1 py-2.5 px-2 text-center text-gray-500 border-b-2 border-transparent hover:text-blue-700 font-bold";
+            if (tabRegBtn) tabRegBtn.className = "flex-1 py-2.5 px-2 text-center text-gray-500 border-b-2 border-transparent hover:text-green-700 font-bold";
+
+            if (tab === 'login') {
+                if (loginForm) loginForm.classList.remove('hidden');
+                if (tabLoginBtn) tabLoginBtn.className = "flex-1 py-2.5 px-2 text-center text-blue-700 border-b-2 border-blue-700 font-bold";
+            } else if (tab === 'otp-login') {
+                if (otpLoginForm) otpLoginForm.classList.remove('hidden');
+                if (tabLoginBtn) tabLoginBtn.className = "flex-1 py-2.5 px-2 text-center text-blue-700 border-b-2 border-blue-700 font-bold";
+            } else if (tab === 'forgot') {
+                if (forgotForm) forgotForm.classList.remove('hidden');
+                if (tabLoginBtn) tabLoginBtn.className = "flex-1 py-2.5 px-2 text-center text-red-700 border-b-2 border-red-700 font-bold";
+            } else if (tab === 'register') {
+                if (regForm) regForm.classList.remove('hidden');
+                if (tabRegBtn) tabRegBtn.className = "flex-1 py-2.5 px-2 text-center text-green-700 border-b-2 border-green-700 font-bold";
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login_email').value.trim();
+            const password = document.getElementById('login_password').value.trim();
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    setShopToken(data.token);
+                    currentShopProfile = data.shop;
+                    document.getElementById('authModal').classList.add('hidden');
+                    await checkAuthStatus();
+                    await loadDashboard();
+                    alert(`Welcome back to ${data.shop.shopName}!`);
+                } else {
+                    alert('Login Failed: ' + (data.error || 'Invalid credentials'));
+                }
+            } catch (err) {
+                alert('Error logging in: ' + err.message);
+            }
+        }
+
+        async function requestOtpForLogin() {
+            const email = document.getElementById('otp_login_email').value.trim();
+            if (!email) {
+                alert('Please enter your registered Email ID first.');
+                return;
+            }
+
+            const statusEl = document.getElementById('otp_login_status');
+            statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200";
+            statusEl.innerText = "Sending OTP...";
+            statusEl.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-green-50 text-green-800 border border-green-200";
+                    statusEl.innerHTML = `✅ ${data.message}.<br><strong>Your OTP code is: <span class="text-sm font-mono text-green-900 bg-white px-2 py-0.5 rounded border border-green-300">${data.otp}</span></strong>`;
+                    document.getElementById('otp_login_code').value = data.otp;
+                } else {
+                    statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 border border-red-200";
+                    statusEl.innerText = '❌ ' + (data.error || 'Failed to send OTP');
+                }
+            } catch (err) {
+                statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 border border-red-200";
+                statusEl.innerText = '❌ Error: ' + err.message;
+            }
+        }
+
+        async function handleOtpLoginSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('otp_login_email').value.trim();
+            const otp = document.getElementById('otp_login_code').value.trim();
+
+            if (!email || !otp) {
+                alert('Please provide both Email ID and OTP code.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    setShopToken(data.token);
+                    currentShopProfile = data.shop;
+                    document.getElementById('authModal').classList.add('hidden');
+                    await checkAuthStatus();
+                    await loadDashboard();
+                    alert(`Welcome back to ${data.shop.shopName}! Logged in via Email OTP.`);
+                } else {
+                    alert('OTP Login Failed: ' + (data.error || 'Invalid OTP'));
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function requestOtpForForgot() {
+            const email = document.getElementById('forgot_email').value.trim();
+            if (!email) {
+                alert('Please enter your registered Email ID first.');
+                return;
+            }
+
+            const statusEl = document.getElementById('forgot_otp_status');
+            statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 border border-red-200";
+            statusEl.innerText = "Sending Reset OTP...";
+            statusEl.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-green-50 text-green-800 border border-green-200";
+                    statusEl.innerHTML = `✅ ${data.message}.<br><strong>Your Reset OTP code is: <span class="text-sm font-mono text-green-900 bg-white px-2 py-0.5 rounded border border-green-300">${data.otp}</span></strong>`;
+                    document.getElementById('forgot_otp_code').value = data.otp;
+                } else {
+                    statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 border border-red-200";
+                    statusEl.innerText = '❌ ' + (data.error || 'Failed to send OTP');
+                }
+            } catch (err) {
+                statusEl.className = "p-2.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 border border-red-200";
+                statusEl.innerText = '❌ Error: ' + err.message;
+            }
+        }
+
+        async function handleResetPasswordSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgot_email').value.trim();
+            const otp = document.getElementById('forgot_otp_code').value.trim();
+            const newPassword = document.getElementById('forgot_new_password').value.trim();
+
+            if (!email || !otp || !newPassword) {
+                alert('Please fill in Email ID, OTP code, and New Password.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp, newPassword })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('🎉 ' + data.message);
+                    switchAuthTab('login');
+                    document.getElementById('login_email').value = email;
+                    document.getElementById('login_password').value = newPassword;
+                } else {
+                    alert('Password Reset Failed: ' + (data.error || 'Invalid OTP or details'));
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const shopName = document.getElementById('reg_shop_name').value.trim();
+            const ownerName = document.getElementById('reg_owner_name').value.trim();
+            const email = document.getElementById('reg_email').value.trim();
+            const password = document.getElementById('reg_password').value.trim();
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shopName, ownerName, email, password })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    setShopToken(data.token);
+                    currentShopProfile = data.shop;
+                    document.getElementById('authModal').classList.add('hidden');
+                    await checkAuthStatus();
+                    await loadDashboard();
+                    alert(`🎉 Registration successful! Welcome to ${data.shop.shopName}. Your shop dashboard is ready.`);
+                } else {
+                    alert('Registration Failed: ' + (data.error || 'Could not create account'));
+                }
+            } catch (err) {
+                alert('Error creating account: ' + err.message);
+            }
+        }
+
+        function openShopSettingsModal() {
+            if (currentShopProfile) {
+                document.getElementById('setting_shop_name').value = currentShopProfile.shopName || '';
+                document.getElementById('setting_owner_name').value = currentShopProfile.ownerName || '';
+                document.getElementById('setting_email').value = currentShopProfile.email || '';
+            }
+            document.getElementById('setting_password').value = '';
+            document.getElementById('shopSettingsModal').classList.remove('hidden');
+        }
+
+        function closeShopSettingsModal() {
+            document.getElementById('shopSettingsModal').classList.add('hidden');
+        }
+
+        async function handleUpdateShopCredentials(e) {
+            e.preventDefault();
+            const shopName = document.getElementById('setting_shop_name').value.trim();
+            const ownerName = document.getElementById('setting_owner_name').value.trim();
+            const email = document.getElementById('setting_email').value.trim();
+            const password = document.getElementById('setting_password').value.trim();
+
+            try {
+                const res = await fetch('/api/auth/update-credentials', {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ shopName, ownerName, email, password })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    closeShopSettingsModal();
+                    await checkAuthStatus();
+                    await loadDashboard();
+                    alert('Shop credentials and details updated successfully!');
+                } else {
+                    alert('Failed to update credentials: ' + (data.error || 'Error'));
+                }
+            } catch (err) {
+                alert('Error updating credentials: ' + err.message);
+            }
+        }
+
+        async function logoutShop() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST', headers: getAuthHeaders() });
+            } catch (err) {
+                console.error("Logout error:", err);
+            }
+
+            removeShopToken();
+            currentShopProfile = null;
+
+            const headerShopName = document.getElementById('headerShopName');
+            const headerOwnerName = document.getElementById('headerOwnerName');
+            const headerEmail = document.getElementById('headerEmail');
+            if (headerShopName) headerShopName.innerText = 'Plumbing Shop';
+            if (headerOwnerName) headerOwnerName.innerText = 'Not Logged In';
+            if (headerEmail) headerEmail.innerText = 'Guest';
+
+            allData = { companies: [], bills: [], payments: [], metrics: {} };
+            
+            const totalOut = document.getElementById('totalOutstanding');
+            const currentDue = document.getElementById('currentDue');
+            const overdueAmt = document.getElementById('overdueAmount');
+            if (totalOut) totalOut.innerText = '₹0';
+            if (currentDue) currentDue.innerText = '₹0';
+            if (overdueAmt) overdueAmt.innerText = '₹0';
+
+            const billCompSel = document.getElementById('billCompanySelect');
+            if (billCompSel) billCompSel.innerHTML = '<option value="">Select Distributor</option>';
+
+            const compTableBody = document.getElementById('companiesTableBody');
+            if (compTableBody) {
+                compTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Please log in to view company data.</td></tr>';
+            }
+
+            const overdueBody = document.getElementById('overdueModalBody');
+            if (overdueBody) overdueBody.innerHTML = '';
+
+            // Reset auth form inputs
+            if (document.getElementById('login_email')) document.getElementById('login_email').value = '';
+            if (document.getElementById('login_password')) document.getElementById('login_password').value = '';
+            if (document.getElementById('otp_login_email')) document.getElementById('otp_login_email').value = '';
+            if (document.getElementById('otp_login_code')) document.getElementById('otp_login_code').value = '';
+
+            switchAuthTab('login');
+            openAuthModal();
+        }
 
         function showDeleteConfirm(title, message, onConfirm) {
             document.getElementById('deleteModalTitle').innerText = title;
@@ -361,7 +965,16 @@
 
         async function loadDashboard() {
             try {
-                const res = await fetch('/api/dashboard');
+                const res = await fetch('/api/dashboard', { headers: getAuthHeaders() });
+                if (res.status === 401) {
+                    openAuthModal();
+                    return;
+                }
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    console.error("Non-JSON response received from /api/dashboard");
+                    return;
+                }
                 allData = await res.json();
 
                 document.getElementById('totalOutstanding').innerText = '₹' + (allData.metrics.totalOutstanding || 0).toLocaleString('en-IN');
@@ -631,7 +1244,7 @@
             try {
                 const res = await fetch(`/api/company/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(data)
                 });
 
@@ -659,7 +1272,7 @@
                 "Are you sure you want to delete this company? All associated bills and payment records will be permanently removed!",
                 async () => {
                     try {
-                        const res = await fetch(`/api/company/${id}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/company/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
                         if (res.ok) {
                             if (activeModalCompany) closeModal();
                             await loadDashboard();
@@ -688,7 +1301,7 @@
 
             const res = await fetch('/api/company', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(companyData)
             });
 
@@ -711,7 +1324,7 @@
 
             const res = await fetch('/api/bill', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(billData)
             });
 
@@ -743,7 +1356,7 @@
 
             const res = await fetch('/api/payment', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     companyName: activeModalCompany,
                     paymentAmount: amount,
@@ -795,7 +1408,7 @@
             try {
                 const res = await fetch(`/api/bill/${billId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         billNo,
                         date,
@@ -822,7 +1435,7 @@
                 "Are you sure you want to delete this bill? Company total outstanding and payment balance will be recalculated.",
                 async () => {
                     try {
-                        const res = await fetch(`/api/bill/${billId}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/bill/${billId}`, { method: 'DELETE', headers: getAuthHeaders() });
                         if (res.ok) {
                             await loadDashboard();
                         } else {
@@ -862,7 +1475,7 @@
             try {
                 const res = await fetch(`/api/payment/${payId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         paymentAmount,
                         paymentDate,
@@ -889,7 +1502,7 @@
                 "Are you sure you want to delete this payment/discount record? Bill balance and company outstanding will be recalculated.",
                 async () => {
                     try {
-                        const res = await fetch(`/api/payment/${payId}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/payment/${payId}`, { method: 'DELETE', headers: getAuthHeaders() });
                         if (res.ok) {
                             await loadDashboard();
                         } else {
@@ -903,7 +1516,14 @@
             );
         }
 
-        window.onload = loadDashboard;
+        window.onload = async () => {
+            const isAuth = await checkAuthStatus();
+            if (isAuth) {
+                await loadDashboard();
+            } else {
+                openAuthModal();
+            }
+        };
     </script>
 </body>
 </html>
