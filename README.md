@@ -2,6 +2,11 @@
 
 A full-stack, multi-tenant ledger and dues management web application designed for plumbing shops, hardware depots, and building material suppliers. Easily track distributor purchase bills, payment due dates, FIFO auto-settlements, credit notes, and supplier bank/UPI payment details.
 
+## Shop Due Tracker and Ledger Management
+
+🌐 Live App: https://karippurath-tracker.vercel.app  
+🔗 New Link: https://shopledgermangement.vercel.app/
+
 ---
 
 ## 🌟 Key Features
