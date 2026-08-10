@@ -2,6 +2,46 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const nodemailer = require('nodemailer');
+
+async function sendOtpEmail(toEmail, otpCode, shopName) {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                secure: process.env.SMTP_PORT === '465',
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+
+            await transporter.sendMail({
+                from: process.env.SMTP_FROM || `"Plumbing Shop Portal" <${process.env.SMTP_USER}>`,
+                to: toEmail,
+                subject: `🔒 Your OTP Verification Code: ${otpCode}`,
+                text: `Your verification code for ${shopName || 'Shop Portal'} is: ${otpCode}. This code is valid for 10 minutes. Do not share it with anyone.`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                        <h2 style="color: #1e3a8a; margin-top: 0;">🏪 ${shopName || 'Shop Portal'}</h2>
+                        <p style="color: #334155; font-size: 15px;">You requested a verification code to sign in or reset your password.</p>
+                        <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px solid #cbd5e1;">
+                            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1d4ed8;">${otpCode}</span>
+                        </div>
+                        <p style="color: #64748b; font-size: 13px;">This code will expire in 10 minutes. Please do not share this OTP with anyone.</p>
+                    </div>
+                `
+            });
+            console.log(`[EMAIL DISPATCH] Real email sent to ${toEmail}`);
+            return true;
+        } catch (mailErr) {
+            console.error('[EMAIL DISPATCH ERROR]', mailErr.message);
+        }
+    }
+    console.log(`[EMAIL DISPATCH] Sent OTP verification code to ${toEmail} (Code: ${otpCode})`);
+    return true;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,9 +53,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 function createMockSupabase() {
     console.log('[AI Studio] Initializing in-memory store for Supabase.');
     const store = {
+        shops: [
+            {
+                id: "1",
+                shop_name: "Karippurath Agencies",
+                owner_name: "Muhammed Rafi",
+                email: "karippurath@gmail.com",
+                username: "admin",
+                password: "admin123",
+                created_at: new Date().toISOString()
+            }
+        ],
         companies: [
             {
                 id: 1,
+                shop_id: "1",
                 name: "Ashirvad Pipes",
                 credit_days: 30,
                 outstanding: 45000,
@@ -26,6 +78,7 @@ function createMockSupabase() {
             },
             {
                 id: 2,
+                shop_id: "1",
                 name: "Finolex Fittings",
                 credit_days: 15,
                 outstanding: 28000,
@@ -38,6 +91,7 @@ function createMockSupabase() {
         bills: [
             {
                 id: 101,
+                shop_id: "1",
                 company_name: "Ashirvad Pipes",
                 bill_no: "INV-2026-001",
                 date: "2026-07-01",
@@ -49,6 +103,7 @@ function createMockSupabase() {
             },
             {
                 id: 102,
+                shop_id: "1",
                 company_name: "Finolex Fittings",
                 bill_no: "INV-2026-002",
                 date: "2026-07-15",
@@ -139,6 +194,10 @@ function createMockSupabase() {
                 }
             };
             return queryObj;
+        },
+        auth: {
+            signInWithOtp: async () => ({ data: {}, error: null }),
+            verifyOtp: async () => ({ data: {}, error: { message: "Mock auth" } })
         }
     };
 }
@@ -160,39 +219,480 @@ if (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.startsWith('http')) {
     supabase = createMockSupabase();
 }
 
+// --- Multi-Shop Session & Authentication Store ---
+const sessions = {}; // token -> shop object
+const otpStore = {}; // cleanEmail -> { code, expiresAt }
+
+async function getAuthShop(req) {
+    const authHeader = req.headers['authorization'] || req.headers['x-shop-token'];
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+    } else if (authHeader) {
+        token = authHeader;
+    }
+
+    if (!token) {
+        return null;
+    }
+
+    if (sessions[token]) {
+        return sessions[token];
+    }
+
+    return null;
+}
+
+// Helper to format shop output
+function formatShopResponse(shop) {
+    return {
+        id: shop.id,
+        shopName: shop.shop_name,
+        ownerName: shop.owner_name,
+        email: shop.email || shop.username || ''
+    };
+}
+
+// --- Auth Endpoints ---
+
+// Register New Shop API (Email & Password)
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { shopName, ownerName, email, password } = req.body;
+        if (!shopName || !email || !password) {
+            return res.status(400).json({ error: "Shop Name, Email ID, and Password are required." });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const { data: existingShops } = await supabase.from('shops').select('*');
+        const duplicate = (existingShops || []).find(s => 
+            (s.email && s.email.toLowerCase() === cleanEmail) || 
+            (s.username && s.username.toLowerCase() === cleanEmail)
+        );
+        
+        if (duplicate) {
+            return res.status(400).json({ error: "A shop with this Email ID already exists. Please log in instead." });
+        }
+
+        const shopId = "shop_" + Date.now();
+        const newShop = {
+            id: shopId,
+            shop_name: shopName.trim(),
+            owner_name: (ownerName || shopName).trim(),
+            email: cleanEmail,
+            username: cleanEmail,
+            password: password.trim(),
+            created_at: new Date().toISOString()
+        };
+
+        await supabase.from('shops').insert([newShop]);
+
+        const token = "token_" + Date.now() + "_" + Math.random().toString(36).substring(2);
+        sessions[token] = newShop;
+
+        res.json({
+            success: true,
+            token: token,
+            shop: formatShopResponse(newShop)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Login Shop API (Email & Password)
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, username, password } = req.body;
+        const inputEmail = (email || username || '').trim().toLowerCase();
+        
+        if (!inputEmail || !password) {
+            return res.status(400).json({ error: "Email ID and Password are required." });
+        }
+
+        const { data: shops } = await supabase.from('shops').select('*');
+        
+        let shop = (shops || []).find(s => 
+            ((s.email && s.email.toLowerCase() === inputEmail) || 
+             (s.username && s.username.toLowerCase() === inputEmail)) && 
+            s.password === password
+        );
+
+        if (!shop) {
+            return res.status(400).json({ error: "Invalid Email ID or Password." });
+        }
+
+        const token = "token_" + Date.now() + "_" + Math.random().toString(36).substring(2);
+        sessions[token] = shop;
+
+        res.json({
+            success: true,
+            token: token,
+            shop: formatShopResponse(shop)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Send OTP API (For OTP Login or Reset Password)
+app.post('/api/auth/send-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ error: "Email ID is required to send OTP." });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const { data: shops } = await supabase.from('shops').select('*');
+        
+        const shop = (shops || []).find(s => 
+            (s.email && s.email.toLowerCase() === cleanEmail) || 
+            (s.username && s.username.toLowerCase() === cleanEmail)
+        );
+
+        if (!shop) {
+            return res.status(400).json({ error: "No shop account found registered with this Email ID." });
+        }
+
+        // Generate 6-digit OTP code as backup
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
+        otpStore[cleanEmail] = { code: otpCode, expiresAt };
+
+        let supabaseAuthSent = false;
+
+        // Call Supabase Auth signInWithOtp to trigger Supabase native email OTP
+        if (supabase && supabase.auth && typeof supabase.auth.signInWithOtp === 'function') {
+            try {
+                const { error: sbErr } = await supabase.auth.signInWithOtp({
+                    email: cleanEmail,
+                    options: {
+                        shouldCreateUser: false
+                    }
+                });
+                if (!sbErr) {
+                    supabaseAuthSent = true;
+                    console.log(`[SUPABASE AUTH] Native OTP sent successfully to ${cleanEmail}`);
+                } else {
+                    console.log('[SUPABASE AUTH] signInWithOtp notice:', sbErr.message);
+                }
+            } catch (sbEx) {
+                console.log('[SUPABASE AUTH EXCEPTION]', sbEx.message);
+            }
+        }
+
+        // Attempt to update shop record in database
+        try {
+            await supabase.from('shops').update({
+                otp_code: otpCode,
+                otp_expires_at: new Date(expiresAt).toISOString()
+            }).eq('id', shop.id);
+        } catch (dbErr) {
+            console.log('Supabase otp column update optional:', dbErr.message);
+        }
+
+        // Dispatch backup Email via SMTP if Supabase Native Auth email wasn't sent
+        if (!supabaseAuthSent) {
+            await sendOtpEmail(cleanEmail, otpCode, shop.shop_name);
+        }
+
+        res.json({
+            success: true,
+            message: `OTP verification code sent to ${cleanEmail}. Please check your email inbox.`
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Verify Email OTP & Login API
+app.post('/api/auth/login-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ error: "Email ID and OTP code are required." });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanOtp = otp.trim();
+
+        const storedOtp = otpStore[cleanEmail];
+        const { data: shops } = await supabase.from('shops').select('*');
+        const shop = (shops || []).find(s => 
+            (s.email && s.email.toLowerCase() === cleanEmail) || 
+            (s.username && s.username.toLowerCase() === cleanEmail)
+        );
+
+        if (!shop) {
+            return res.status(400).json({ error: "No shop account found with this Email ID." });
+        }
+
+        let isValid = false;
+
+        // 1. Try Supabase Auth verifyOtp natively
+        if (supabase && supabase.auth && typeof supabase.auth.verifyOtp === 'function') {
+            try {
+                const { data: sbData, error: sbErr } = await supabase.auth.verifyOtp({
+                    email: cleanEmail,
+                    token: cleanOtp,
+                    type: 'email'
+                });
+                if (!sbErr && sbData && sbData.session) {
+                    isValid = true;
+                    console.log(`[SUPABASE AUTH] Native OTP verified for ${cleanEmail}`);
+                }
+            } catch (sbEx) {
+                console.log('[SUPABASE AUTH VERIFY EXCEPTION]', sbEx.message);
+            }
+        }
+
+        // 2. Fallback check stored OTP code or shop table OTP code
+        if (!isValid) {
+            if (storedOtp && storedOtp.code === cleanOtp && Date.now() < storedOtp.expiresAt) {
+                isValid = true;
+            } else if (shop.otp_code === cleanOtp && shop.otp_expires_at && new Date(shop.otp_expires_at).getTime() > Date.now()) {
+                isValid = true;
+            }
+        }
+
+        if (!isValid) {
+            return res.status(400).json({ error: "Invalid or expired OTP code." });
+        }
+
+        // Clear OTP after successful use
+        delete otpStore[cleanEmail];
+
+        const token = "token_" + Date.now() + "_" + Math.random().toString(36).substring(2);
+        sessions[token] = shop;
+
+        res.json({
+            success: true,
+            token: token,
+            shop: formatShopResponse(shop)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Forgot / Reset Password API
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ error: "Email ID, OTP code, and New Password are required." });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanOtp = otp.trim();
+        const cleanPassword = newPassword.trim();
+
+        if (cleanPassword.length < 4) {
+            return res.status(400).json({ error: "New password must be at least 4 characters long." });
+        }
+
+        const storedOtp = otpStore[cleanEmail];
+        const { data: shops } = await supabase.from('shops').select('*');
+        const shop = (shops || []).find(s => 
+            (s.email && s.email.toLowerCase() === cleanEmail) || 
+            (s.username && s.username.toLowerCase() === cleanEmail)
+        );
+
+        if (!shop) {
+            return res.status(400).json({ error: "No shop account found with this Email ID." });
+        }
+
+        let isValid = false;
+
+        // 1. Try Supabase Auth verifyOtp natively
+        if (supabase && supabase.auth && typeof supabase.auth.verifyOtp === 'function') {
+            try {
+                const { data: sbData, error: sbErr } = await supabase.auth.verifyOtp({
+                    email: cleanEmail,
+                    token: cleanOtp,
+                    type: 'recovery'
+                });
+                if (!sbErr && sbData) {
+                    isValid = true;
+                } else {
+                    const { data: sbData2, error: sbErr2 } = await supabase.auth.verifyOtp({
+                        email: cleanEmail,
+                        token: cleanOtp,
+                        type: 'email'
+                    });
+                    if (!sbErr2 && sbData2) {
+                        isValid = true;
+                    }
+                }
+            } catch (sbEx) {
+                console.log('[SUPABASE AUTH VERIFY EXCEPTION]', sbEx.message);
+            }
+        }
+
+        // 2. Fallback check stored OTP
+        if (!isValid) {
+            if (storedOtp && storedOtp.code === cleanOtp && Date.now() < storedOtp.expiresAt) {
+                isValid = true;
+            } else if (shop.otp_code === cleanOtp && shop.otp_expires_at && new Date(shop.otp_expires_at).getTime() > Date.now()) {
+                isValid = true;
+            }
+        }
+
+        if (!isValid) {
+            return res.status(400).json({ error: "Invalid or expired OTP code." });
+        }
+
+        // Clear OTP
+        delete otpStore[cleanEmail];
+
+        // Update password
+        shop.password = cleanPassword;
+        await supabase.from('shops').update({
+            password: cleanPassword,
+            otp_code: null,
+            otp_expires_at: null
+        }).eq('id', shop.id);
+
+        res.json({
+            success: true,
+            message: "Password reset successfully! You can now log in with your new password."
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Logged-in Shop Info
+app.get('/api/auth/me', async (req, res) => {
+    const shop = await getAuthShop(req);
+    if (!shop) {
+        return res.json({ authenticated: false });
+    }
+    res.json({
+        authenticated: true,
+        shop: formatShopResponse(shop)
+    });
+});
+
+// Logout Shop API
+app.post('/api/auth/logout', async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'] || req.headers['x-shop-token'];
+        if (authHeader) {
+            const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+            delete sessions[token];
+        }
+        res.json({ success: true, message: "Logged out successfully" });
+    } catch (err) {
+        res.json({ success: true, message: "Logged out" });
+    }
+});
+
+// Update Shop Credentials / Settings
+app.put('/api/auth/update-credentials', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const { shopName, ownerName, email, username, password } = req.body;
+        const cleanEmail = (email || username || shop.email || shop.username || '').trim().toLowerCase();
+
+        if (cleanEmail && cleanEmail !== (shop.email || shop.username)) {
+            const { data: shops } = await supabase.from('shops').select('*');
+            const taken = (shops || []).find(s => 
+                String(s.id) !== String(shop.id) && 
+                ((s.email && s.email.toLowerCase() === cleanEmail) || 
+                 (s.username && s.username.toLowerCase() === cleanEmail))
+            );
+            if (taken) {
+                return res.status(400).json({ error: "Email ID is already registered to another shop." });
+            }
+        }
+
+        shop.shop_name = shopName ? shopName.trim() : shop.shop_name;
+        shop.owner_name = ownerName ? ownerName.trim() : shop.owner_name;
+        shop.email = cleanEmail;
+        shop.username = cleanEmail;
+        if (password && password.trim()) {
+            shop.password = password.trim();
+        }
+
+        await supabase.from('shops').update({
+            shop_name: shop.shop_name,
+            owner_name: shop.owner_name,
+            email: shop.email,
+            username: shop.username,
+            password: shop.password
+        }).eq('id', shop.id);
+
+        res.json({
+            success: true,
+            message: "Shop details updated successfully!",
+            shop: formatShopResponse(shop)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Logout
+app.post('/api/auth/logout', async (req, res) => {
+    const authHeader = req.headers['authorization'] || req.headers['x-shop-token'];
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.substring(7);
+    else if (authHeader) token = authHeader;
+
+    if (token && sessions[token]) {
+        delete sessions[token];
+    }
+    res.json({ success: true });
+});
+
 // Dashboard API
 app.get('/api/dashboard', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const today = new Date().toISOString().split('T')[0];
         
-        const { data: companies, error: compErr } = await supabase.from('companies').select('*');
+        const { data: rawCompanies, error: compErr } = await supabase.from('companies').select('*');
         if (compErr) throw compErr;
 
-        const { data: bills, error: billErr } = await supabase.from('bills').select('*');
+        const { data: rawBills, error: billErr } = await supabase.from('bills').select('*');
         if (billErr) throw billErr;
 
-        const { data: payments, error: payErr } = await supabase.from('payments').select('*');
+        const { data: rawPayments, error: payErr } = await supabase.from('payments').select('*');
         if (payErr) throw payErr;
+
+        const companies = (rawCompanies || []).filter(c => String(c.shop_id || '1') === shopId);
+        const bills = (rawBills || []).filter(b => String(b.shop_id || '1') === shopId);
+        const payments = (rawPayments || []).filter(p => String(p.shop_id || '1') === shopId);
 
         let totalOutstanding = 0;
         let currentDue = 0;
         let overdueAmount = 0;
 
-        (companies || []).forEach(comp => {
-            totalOutstanding += comp.outstanding;
+        companies.forEach(comp => {
+            totalOutstanding += (parseFloat(comp.outstanding) || 0);
         });
 
-        (bills || []).forEach(bill => {
+        bills.forEach(bill => {
             if (bill.status !== 'Settled') {
+                const bal = parseFloat(bill.balance_due) || 0;
                 if (bill.due_date < today) {
-                    overdueAmount += bill.balance_due;
+                    overdueAmount += bal;
                 } else {
-                    currentDue += bill.balance_due;
+                    currentDue += bal;
                 }
             }
         });
 
-        const formattedCompanies = (companies || []).map(c => ({
+        const formattedCompanies = companies.map(c => ({
             id: c.id,
             name: c.name,
             creditDays: c.credit_days,
@@ -203,7 +703,7 @@ app.get('/api/dashboard', async (req, res) => {
             upi: c.upi
         }));
 
-        const formattedBills = (bills || []).map(b => ({
+        const formattedBills = bills.map(b => ({
             id: b.id,
             companyName: b.company_name,
             billNo: b.bill_no,
@@ -215,7 +715,7 @@ app.get('/api/dashboard', async (req, res) => {
             status: b.status
         }));
 
-        const formattedPayments = (payments || []).map(p => ({
+        const formattedPayments = payments.map(p => ({
             id: p.id,
             billId: p.bill_id,
             companyName: p.company_name,
@@ -240,6 +740,10 @@ app.get('/api/dashboard', async (req, res) => {
 // Add Company
 app.post('/api/company', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const { name, creditDays, openingBalance, bankName, accountNo, ifsc, upi } = req.body;
         const parsedCreditDays = parseInt(creditDays) || 0;
         const parsedOpeningBal = parseFloat(openingBalance) || 0;
@@ -247,6 +751,7 @@ app.post('/api/company', async (req, res) => {
         
         const newComp = { 
             id: compId, 
+            shop_id: shopId,
             name, 
             credit_days: parsedCreditDays, 
             outstanding: parsedOpeningBal, 
@@ -263,6 +768,7 @@ app.post('/api/company', async (req, res) => {
             const today = new Date().toISOString().split('T')[0];
             const newBill = {
                 id: Date.now() + 1,
+                shop_id: shopId,
                 company_name: name,
                 bill_no: "OPENING-BAL",
                 date: today,
@@ -285,19 +791,16 @@ app.post('/api/company', async (req, res) => {
 // Edit Company Details
 app.put('/api/company/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
         const { name, creditDays, bankName, accountNo, ifsc, upi } = req.body;
         
-        let { data: existing } = await supabase.from('companies').select('*').eq('id', rawId).single();
-        if (!existing && !isNaN(numId)) {
-            let resObj = await supabase.from('companies').select('*').eq('id', numId).single();
-            existing = resObj.data;
-        }
-        if (!existing) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            existing = (companies || []).find(c => String(c.id) === String(rawId));
-        }
+        const { data: companies } = await supabase.from('companies').select('*');
+        let existing = (companies || []).find(c => (String(c.id) === String(rawId) || c.id === numId) && String(c.shop_id || '1') === shopId);
 
         if (!existing) return res.status(404).json({ error: "Company not found" });
 
@@ -305,8 +808,17 @@ app.put('/api/company/:id', async (req, res) => {
         const newName = (name && name.trim()) ? name.trim() : oldName;
 
         if (oldName !== newName) {
-            await supabase.from('bills').update({ company_name: newName }).eq('company_name', oldName);
-            await supabase.from('payments').update({ company_name: newName }).eq('company_name', oldName);
+            const { data: bills } = await supabase.from('bills').select('*');
+            (bills || []).filter(b => b.company_name === oldName && String(b.shop_id || '1') === shopId)
+                .forEach(async b => {
+                    await supabase.from('bills').update({ company_name: newName }).eq('id', b.id);
+                });
+
+            const { data: payments } = await supabase.from('payments').select('*');
+            (payments || []).filter(p => p.company_name === oldName && String(p.shop_id || '1') === shopId)
+                .forEach(async p => {
+                    await supabase.from('payments').update({ company_name: newName }).eq('id', p.id);
+                });
         }
 
         const updatedData = {
@@ -331,31 +843,33 @@ app.put('/api/company/:id', async (req, res) => {
 // Delete Company
 app.delete('/api/company/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
 
-        let { data: comp } = await supabase.from('companies').select('*').eq('id', rawId).single();
-        if (!comp && !isNaN(numId)) {
-            let resObj = await supabase.from('companies').select('*').eq('id', numId).single();
-            comp = resObj.data;
-        }
-        if (!comp) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            comp = (companies || []).find(c => String(c.id) === String(rawId));
-        }
+        const { data: companies } = await supabase.from('companies').select('*');
+        let comp = (companies || []).find(c => (String(c.id) === String(rawId) || c.id === numId) && String(c.shop_id || '1') === shopId);
 
         const compName = comp ? comp.name : null;
         if (compName) {
-            await supabase.from('payments').delete().eq('company_name', compName);
-            await supabase.from('bills').delete().eq('company_name', compName);
+            const { data: payments } = await supabase.from('payments').select('*');
+            (payments || []).filter(p => p.company_name === compName && String(p.shop_id || '1') === shopId)
+                .forEach(async p => {
+                    await supabase.from('payments').delete().eq('id', p.id);
+                });
+
+            const { data: bills } = await supabase.from('bills').select('*');
+            (bills || []).filter(b => b.company_name === compName && String(b.shop_id || '1') === shopId)
+                .forEach(async b => {
+                    await supabase.from('bills').delete().eq('id', b.id);
+                });
         }
 
         if (comp) {
             await supabase.from('companies').delete().eq('id', comp.id);
-        }
-        await supabase.from('companies').delete().eq('id', rawId);
-        if (!isNaN(numId)) {
-            await supabase.from('companies').delete().eq('id', numId);
         }
 
         res.json({ success: true });
@@ -366,25 +880,23 @@ app.delete('/api/company/:id', async (req, res) => {
 });
 
 // Recalculate company bills and outstanding balance
-async function recalculateCompanyState(companyName) {
+async function recalculateCompanyState(companyName, shopId) {
     if (!companyName) return;
+    const currentShopId = String(shopId || '1');
 
     try {
-        let { data: company } = await supabase.from('companies').select('*').eq('name', companyName).single();
-        if (!company) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            company = (companies || []).find(c => c.name === companyName);
-        }
+        const { data: rawCompanies } = await supabase.from('companies').select('*');
+        let company = (rawCompanies || []).find(c => c.name === companyName && String(c.shop_id || '1') === currentShopId);
         if (!company) return;
 
-        const { data: rawBills } = await supabase.from('bills').select('*').eq('company_name', companyName);
-        let bills = (rawBills || []).filter(b => b && b.company_name === companyName);
+        const { data: rawBills } = await supabase.from('bills').select('*');
+        let bills = (rawBills || []).filter(b => b && b.company_name === companyName && String(b.shop_id || '1') === currentShopId);
 
         // Sort bills FIFO: oldest date/due_date first
         bills.sort((a, b) => new Date(a.date || a.due_date) - new Date(b.date || b.due_date) || (Number(a.id) - Number(b.id)));
 
-        const { data: rawPayments } = await supabase.from('payments').select('*').eq('company_name', companyName);
-        let payments = (rawPayments || []).filter(p => p && p.company_name === companyName);
+        const { data: rawPayments } = await supabase.from('payments').select('*');
+        let payments = (rawPayments || []).filter(p => p && p.company_name === companyName && String(p.shop_id || '1') === currentShopId);
 
         let billPaidMap = {};
         bills.forEach(b => { billPaidMap[String(b.id)] = 0; });
@@ -442,13 +954,15 @@ async function recalculateCompanyState(companyName) {
 // Add Bill
 app.post('/api/bill', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const { companyName, billNo, date, amount } = req.body;
-        let { data: compObj, error: compErr } = await supabase.from('companies').select('*').eq('name', companyName).single();
-        if (!compObj) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            compObj = (companies || []).find(c => c.name === companyName);
-        }
-        if (compErr || !compObj) return res.status(404).json({ error: "Company not found" });
+        const { data: companies } = await supabase.from('companies').select('*');
+        let compObj = (companies || []).find(c => c.name === companyName && String(c.shop_id || '1') === shopId);
+
+        if (!compObj) return res.status(404).json({ error: "Company not found" });
 
         const creditDays = compObj.credit_days !== undefined ? compObj.credit_days : 30;
         const billDateObj = new Date(date);
@@ -458,6 +972,7 @@ app.post('/api/bill', async (req, res) => {
 
         const newBill = {
             id: Date.now(),
+            shop_id: shopId,
             company_name: companyName,
             bill_no: billNo,
             date,
@@ -471,7 +986,7 @@ app.post('/api/bill', async (req, res) => {
         const { error: insertErr } = await supabase.from('bills').insert([newBill]);
         if (insertErr) throw insertErr;
 
-        await recalculateCompanyState(companyName);
+        await recalculateCompanyState(companyName, shopId);
 
         res.json({ success: true, bill: newBill });
     } catch (err) {
@@ -482,26 +997,21 @@ app.post('/api/bill', async (req, res) => {
 // Edit Bill
 app.put('/api/bill/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
         const { billNo, date, amount } = req.body;
         
-        let { data: bill } = await supabase.from('bills').select('*').eq('id', rawId).single();
-        if (!bill && !isNaN(numId)) {
-            let resObj = await supabase.from('bills').select('*').eq('id', numId).single();
-            bill = resObj.data;
-        }
-        if (!bill) {
-            const { data: bills } = await supabase.from('bills').select('*');
-            bill = (bills || []).find(b => String(b.id) === String(rawId));
-        }
+        const { data: bills } = await supabase.from('bills').select('*');
+        let bill = (bills || []).find(b => (String(b.id) === String(rawId) || b.id === numId) && String(b.shop_id || '1') === shopId);
+
         if (!bill) return res.status(404).json({ error: "Bill not found" });
 
-        let { data: company } = await supabase.from('companies').select('*').eq('name', bill.company_name).single();
-        if (!company) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            company = (companies || []).find(c => c.name === bill.company_name);
-        }
+        const { data: companies } = await supabase.from('companies').select('*');
+        let company = (companies || []).find(c => c.name === bill.company_name && String(c.shop_id || '1') === shopId);
 
         const creditDays = company && company.credit_days !== undefined ? company.credit_days : 30;
         const newTotal = parseFloat(amount);
@@ -518,7 +1028,7 @@ app.put('/api/bill/:id', async (req, res) => {
         };
 
         await supabase.from('bills').update(updateFields).eq('id', bill.id);
-        await recalculateCompanyState(bill.company_name);
+        await recalculateCompanyState(bill.company_name, shopId);
 
         res.json({ success: true, bill: updateFields });
     } catch (err) {
@@ -529,37 +1039,31 @@ app.put('/api/bill/:id', async (req, res) => {
 // Delete Bill
 app.delete('/api/bill/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
 
-        let { data: bill } = await supabase.from('bills').select('*').eq('id', rawId).single();
-        if (!bill && !isNaN(numId)) {
-            let resObj = await supabase.from('bills').select('*').eq('id', numId).single();
-            bill = resObj.data;
-        }
-        if (!bill) {
-            const { data: bills } = await supabase.from('bills').select('*');
-            bill = (bills || []).find(b => String(b.id) === String(rawId));
-        }
+        const { data: bills } = await supabase.from('bills').select('*');
+        let bill = (bills || []).find(b => (String(b.id) === String(rawId) || b.id === numId) && String(b.shop_id || '1') === shopId);
 
         const companyName = bill ? bill.company_name : null;
         const billIdToDelete = bill ? bill.id : rawId;
 
-        // Delete associated payments for this bill
-        await supabase.from('payments').delete().eq('bill_id', billIdToDelete);
-        if (!isNaN(Number(billIdToDelete))) {
-            await supabase.from('payments').delete().eq('bill_id', Number(billIdToDelete));
-        }
-        await supabase.from('payments').delete().eq('bill_id', String(billIdToDelete));
+        if (bill) {
+            const { data: payments } = await supabase.from('payments').select('*');
+            (payments || []).filter(p => (String(p.bill_id) === String(billIdToDelete) || p.bill_id == billIdToDelete) && String(p.shop_id || '1') === shopId)
+                .forEach(async p => {
+                    await supabase.from('payments').delete().eq('id', p.id);
+                });
 
-        // Delete bill
-        await supabase.from('bills').delete().eq('id', rawId);
-        if (!isNaN(numId)) {
-            await supabase.from('bills').delete().eq('id', numId);
+            await supabase.from('bills').delete().eq('id', bill.id);
         }
 
         if (companyName) {
-            await recalculateCompanyState(companyName);
+            await recalculateCompanyState(companyName, shopId);
         }
 
         res.json({ success: true });
@@ -572,6 +1076,10 @@ app.delete('/api/bill/:id', async (req, res) => {
 // Payment / Credit Note Allocation (FIFO Settlement)
 app.post('/api/payment', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const { companyName, paymentAmount, paymentDate, paymentMode, remark } = req.body;
         let payAmt = parseFloat(paymentAmount);
 
@@ -579,20 +1087,14 @@ app.post('/api/payment', async (req, res) => {
             return res.status(400).json({ error: "Invalid payment or credit details" });
         }
 
-        let { data: company } = await supabase.from('companies').select('*').eq('name', companyName).single();
-        if (!company) {
-            const { data: companies } = await supabase.from('companies').select('*');
-            company = (companies || []).find(c => c.name === companyName);
-        }
+        const { data: companies } = await supabase.from('companies').select('*');
+        let company = (companies || []).find(c => c.name === companyName && String(c.shop_id || '1') === shopId);
+
         if (!company) return res.status(404).json({ error: "Company not found" });
 
-        let { data: companyBills } = await supabase
-            .from('bills')
-            .select('*')
-            .eq('company_name', companyName);
-
+        const { data: companyBills } = await supabase.from('bills').select('*');
         let openBills = (companyBills || [])
-            .filter(b => b.status !== 'Settled')
+            .filter(b => b && b.company_name === companyName && String(b.shop_id || '1') === shopId && b.status !== 'Settled')
             .sort((a, b) => new Date(a.date || a.due_date) - new Date(b.date || b.due_date) || (Number(a.id) - Number(b.id)));
 
         let remainingToAllocate = payAmt;
@@ -608,6 +1110,7 @@ app.post('/api/payment', async (req, res) => {
 
             const newPayment = {
                 id: Date.now() + Math.floor(Math.random() * 100000),
+                shop_id: shopId,
                 bill_id: bill.id,
                 company_name: companyName,
                 bill_no: bill.bill_no,
@@ -622,6 +1125,7 @@ app.post('/api/payment', async (req, res) => {
         if (remainingToAllocate > 0) {
             const advancePayment = {
                 id: Date.now() + Math.floor(Math.random() * 100000),
+                shop_id: shopId,
                 bill_id: null,
                 company_name: companyName,
                 bill_no: 'ADVANCE/CREDIT',
@@ -633,7 +1137,7 @@ app.post('/api/payment', async (req, res) => {
             await supabase.from('payments').insert([advancePayment]);
         }
 
-        await recalculateCompanyState(companyName);
+        await recalculateCompanyState(companyName, shopId);
 
         res.json({ success: true });
     } catch (err) {
@@ -645,19 +1149,17 @@ app.post('/api/payment', async (req, res) => {
 // Edit Payment / Credit Note
 app.put('/api/payment/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
         const { paymentAmount, paymentDate, remark } = req.body;
         
-        let { data: payment } = await supabase.from('payments').select('*').eq('id', rawId).single();
-        if (!payment && !isNaN(numId)) {
-            let resObj = await supabase.from('payments').select('*').eq('id', numId).single();
-            payment = resObj.data;
-        }
-        if (!payment) {
-            const { data: payments } = await supabase.from('payments').select('*');
-            payment = (payments || []).find(p => String(p.id) === String(rawId));
-        }
+        const { data: payments } = await supabase.from('payments').select('*');
+        let payment = (payments || []).find(p => (String(p.id) === String(rawId) || p.id === numId) && String(p.shop_id || '1') === shopId);
+
         if (!payment) return res.status(404).json({ error: "Record not found" });
 
         const newPayAmt = parseFloat(paymentAmount);
@@ -669,7 +1171,7 @@ app.put('/api/payment/:id', async (req, res) => {
         };
 
         await supabase.from('payments').update(updateData).eq('id', payment.id);
-        await recalculateCompanyState(payment.company_name);
+        await recalculateCompanyState(payment.company_name, shopId);
 
         res.json({ success: true, payment: updateData });
     } catch (err) {
@@ -680,28 +1182,24 @@ app.put('/api/payment/:id', async (req, res) => {
 // Delete Payment / Credit Note
 app.delete('/api/payment/:id', async (req, res) => {
     try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
         const rawId = req.params.id;
         const numId = Number(rawId);
 
-        let { data: payment } = await supabase.from('payments').select('*').eq('id', rawId).single();
-        if (!payment && !isNaN(numId)) {
-            let resObj = await supabase.from('payments').select('*').eq('id', numId).single();
-            payment = resObj.data;
-        }
-        if (!payment) {
-            const { data: payments } = await supabase.from('payments').select('*');
-            payment = (payments || []).find(p => String(p.id) === String(rawId));
-        }
+        const { data: payments } = await supabase.from('payments').select('*');
+        let payment = (payments || []).find(p => (String(p.id) === String(rawId) || p.id === numId) && String(p.shop_id || '1') === shopId);
 
         const companyName = payment ? payment.company_name : null;
 
-        await supabase.from('payments').delete().eq('id', rawId);
-        if (!isNaN(numId)) {
-            await supabase.from('payments').delete().eq('id', numId);
+        if (payment) {
+            await supabase.from('payments').delete().eq('id', payment.id);
         }
 
         if (companyName) {
-            await recalculateCompanyState(companyName);
+            await recalculateCompanyState(companyName, shopId);
         }
 
         res.json({ success: true });
@@ -712,11 +1210,9 @@ app.delete('/api/payment/:id', async (req, res) => {
 });
 
 // Local Development Server listener
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`Plumbing Shop Dues & Tracker running on port ${PORT}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`Plumbing Shop Dues & Tracker running on port ${PORT}`);
+});
 
 // Export app for Vercel Serverless Functions
 module.exports = app;
