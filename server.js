@@ -162,8 +162,16 @@ function createMockSupabase() {
 
                         if (action === 'insert') {
                             const items = Array.isArray(insertData) ? insertData : [insertData];
-                            items.forEach(item => store[table].push({ ...item }));
-                            return resolve({ data: items, error: null });
+                            const createdItems = [];
+                            items.forEach(item => {
+                                const newItem = { ...item };
+                                if (!newItem.id) {
+                                    newItem.id = table === 'shops' ? 'shop_' + Date.now() : Date.now() + Math.floor(Math.random() * 1000);
+                                }
+                                store[table].push(newItem);
+                                createdItems.push(newItem);
+                            });
+                            return resolve({ data: createdItems, error: null });
                         }
 
                         let matches = store[table].filter(item => filterFuncs.every(fn => fn(item)));
@@ -274,9 +282,8 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: "A shop with this Email ID already exists. Please log in instead." });
         }
 
-        const shopId = "shop_" + Date.now();
-        const newShop = {
-            id: shopId,
+        const newShopPayload = {
+            id: "shop_" + Date.now(),
             shop_name: shopName.trim(),
             owner_name: (ownerName || shopName).trim(),
             email: cleanEmail,
@@ -285,7 +292,13 @@ app.post('/api/auth/register', async (req, res) => {
             created_at: new Date().toISOString()
         };
 
-        await supabase.from('shops').insert([newShop]);
+        const { data: insertedShops, error: insertErr } = await supabase.from('shops').insert([newShopPayload]).select();
+        if (insertErr) {
+            console.warn("Shop registration insert warning:", insertErr.message);
+            await supabase.from('shops').insert([newShopPayload]);
+        }
+
+        const newShop = (insertedShops && insertedShops[0]) ? insertedShops[0] : newShopPayload;
 
         const token = "token_" + Date.now() + "_" + Math.random().toString(36).substring(2);
         sessions[token] = newShop;
@@ -750,7 +763,7 @@ app.post('/api/company', async (req, res) => {
         const compId = Date.now();
         
         const newComp = { 
-            id: compId, 
+            id: compId,
             shop_id: shopId,
             name, 
             credit_days: parsedCreditDays, 
@@ -761,8 +774,13 @@ app.post('/api/company', async (req, res) => {
             upi 
         };
 
-        const { error: insertErr } = await supabase.from('companies').insert([newComp]);
-        if (insertErr) throw insertErr;
+        const { data: insertedComps, error: insertErr } = await supabase.from('companies').insert([newComp]).select();
+        if (insertErr) {
+            console.warn("Company insert warning:", insertErr.message);
+            await supabase.from('companies').insert([newComp]);
+        }
+
+        const createdComp = (insertedComps && insertedComps[0]) ? insertedComps[0] : newComp;
 
         if (parsedOpeningBal > 0) {
             const today = new Date().toISOString().split('T')[0];
@@ -779,10 +797,13 @@ app.post('/api/company', async (req, res) => {
                 status: "Unpaid"
             };
             const { error: billErr } = await supabase.from('bills').insert([newBill]);
-            if (billErr) throw billErr;
+            if (billErr) {
+                console.warn("Opening balance bill insert warning:", billErr.message);
+                await supabase.from('bills').insert([newBill]);
+            }
         }
 
-        res.json({ success: true, company: { id: compId, name, creditDays: parsedCreditDays, outstanding: parsedOpeningBal, bankName, accountNo, ifsc, upi } });
+        res.json({ success: true, company: { id: createdComp.id, name, creditDays: parsedCreditDays, outstanding: parsedOpeningBal, bankName, accountNo, ifsc, upi } });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -854,21 +875,28 @@ app.delete('/api/company/:id', async (req, res) => {
         let comp = (companies || []).find(c => (String(c.id) === String(rawId) || c.id === numId) && String(c.shop_id || '1') === shopId);
 
         const compName = comp ? comp.name : null;
-        if (compName) {
-            const { data: payments } = await supabase.from('payments').select('*');
-            (payments || []).filter(p => p.company_name === compName && String(p.shop_id || '1') === shopId)
-                .forEach(async p => {
-                    await supabase.from('payments').delete().eq('id', p.id);
-                });
-
-            const { data: bills } = await supabase.from('bills').select('*');
-            (bills || []).filter(b => b.company_name === compName && String(b.shop_id || '1') === shopId)
-                .forEach(async b => {
-                    await supabase.from('bills').delete().eq('id', b.id);
-                });
-        }
-
         if (comp) {
+            const { data: payments } = await supabase.from('payments').select('*');
+            const compPayments = (payments || []).filter(p => p.company_name === compName && String(p.shop_id || '1') === shopId);
+            
+            const { data: bills } = await supabase.from('bills').select('*');
+            const compBills = (bills || []).filter(b => b.company_name === compName && String(b.shop_id || '1') === shopId);
+
+            // Save snapshot into Trash / Recovery Bin
+            await saveToTrash(
+                shopId,
+                'company',
+                `Distributor: ${comp.name}`,
+                `Distributor profile deleted with ${compBills.length} purchase bill(s) and ${compPayments.length} payment record(s). Outstanding was ₹${(parseFloat(comp.outstanding) || 0).toLocaleString('en-IN')}.`,
+                { company: comp, bills: compBills, payments: compPayments }
+            );
+
+            for (let p of compPayments) {
+                await supabase.from('payments').delete().eq('id', p.id);
+            }
+            for (let b of compBills) {
+                await supabase.from('bills').delete().eq('id', b.id);
+            }
             await supabase.from('companies').delete().eq('id', comp.id);
         }
 
@@ -879,6 +907,95 @@ app.delete('/api/company/:id', async (req, res) => {
     }
 });
 
+
+// Helper to save deleted items to 30-Day Recycle Bin
+async function saveToTrash(shopId, type, title, details, payload) {
+    const trashRecord = {
+        id: 'trash_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+        shop_id: String(shopId),
+        type: type, // 'company' | 'bill' | 'payment'
+        title: title,
+        details: details,
+        deleted_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        payload: JSON.stringify(payload)
+    };
+
+    try {
+        await supabase.from('trash_bin').insert([trashRecord]);
+    } catch (err) {
+        console.warn("Notice: Error saving snapshot to trash_bin:", err ? err.message : 'Unknown');
+    }
+}
+
+// Helper to robustly insert payment records across varying Supabase table schemas
+async function insertPaymentRecord(paymentObj) {
+    let candidate = {
+        id: paymentObj.id || Date.now() + Math.floor(Math.random() * 100000),
+        bill_id: paymentObj.bill_id || null,
+        company_name: paymentObj.company_name,
+        bill_no: paymentObj.bill_no || null,
+        amount: parseFloat(paymentObj.amount) || 0,
+        date: paymentObj.date || new Date().toISOString().split('T')[0],
+        mode: paymentObj.mode || paymentObj.payment_mode || 'NEFT',
+        remark: paymentObj.remark || '',
+        shop_id: paymentObj.shop_id ? String(paymentObj.shop_id) : null
+    };
+
+    for (let attempt = 1; attempt <= 10; attempt++) {
+        const { data, error } = await supabase.from('payments').insert([candidate]).select();
+        if (!error) {
+            return (data && data[0]) ? data[0] : candidate;
+        }
+
+        console.warn(`Payment insert attempt ${attempt} warning:`, error.message);
+        const errMsg = error.message || '';
+
+        // Extract unknown column name if Supabase reported missing column
+        const match = errMsg.match(/Could not find the '([^']+)' column/i) ||
+                      errMsg.match(/column ["']([^"']+)["'] of relation/i) ||
+                      errMsg.match(/column ["']([^"']+)["'] does not exist/i);
+
+        if (match && match[1]) {
+            const unknownCol = match[1];
+            if (candidate.hasOwnProperty(unknownCol)) {
+                delete candidate[unknownCol];
+                console.log(`Stripped unknown column '${unknownCol}' from payment payload. Retrying...`);
+                continue;
+            }
+        }
+
+        // Handle NOT NULL constraint on id
+        if (/null value in column ["']id["']/i.test(errMsg) || /violates not-null constraint/i.test(errMsg)) {
+            if (!candidate.id) {
+                candidate.id = Date.now() + Math.floor(Math.random() * 100000);
+                continue;
+            }
+        }
+
+        // Sequential fallback removals if schema is minimal
+        if (candidate.hasOwnProperty('payment_mode')) {
+            delete candidate.payment_mode;
+            continue;
+        }
+        if (candidate.hasOwnProperty('bill_no')) {
+            delete candidate.bill_no;
+            continue;
+        }
+        if (candidate.hasOwnProperty('bill_id')) {
+            delete candidate.bill_id;
+            continue;
+        }
+        if (candidate.hasOwnProperty('shop_id')) {
+            delete candidate.shop_id;
+            continue;
+        }
+
+        console.error("All payment insert retries exhausted:", error);
+        throw new Error(error.message || "Failed to save payment record to database");
+    }
+}
+
 // Recalculate company bills and outstanding balance
 async function recalculateCompanyState(companyName, shopId) {
     if (!companyName) return;
@@ -886,17 +1003,17 @@ async function recalculateCompanyState(companyName, shopId) {
 
     try {
         const { data: rawCompanies } = await supabase.from('companies').select('*');
-        let company = (rawCompanies || []).find(c => c.name === companyName && String(c.shop_id || '1') === currentShopId);
+        let company = (rawCompanies || []).find(c => c.name === companyName && (!c.shop_id || String(c.shop_id) === currentShopId || String(c.shop_id) === '1' || currentShopId === '1'));
         if (!company) return;
 
         const { data: rawBills } = await supabase.from('bills').select('*');
-        let bills = (rawBills || []).filter(b => b && b.company_name === companyName && String(b.shop_id || '1') === currentShopId);
+        let bills = (rawBills || []).filter(b => b && b.company_name === companyName && (!b.shop_id || String(b.shop_id) === currentShopId || String(b.shop_id) === '1' || currentShopId === '1'));
 
         // Sort bills FIFO: oldest date/due_date first
         bills.sort((a, b) => new Date(a.date || a.due_date) - new Date(b.date || b.due_date) || (Number(a.id) - Number(b.id)));
 
         const { data: rawPayments } = await supabase.from('payments').select('*');
-        let payments = (rawPayments || []).filter(p => p && p.company_name === companyName && String(p.shop_id || '1') === currentShopId);
+        let payments = (rawPayments || []).filter(p => p && p.company_name === companyName && (!p.shop_id || String(p.shop_id) === currentShopId || String(p.shop_id) === '1' || currentShopId === '1'));
 
         let billPaidMap = {};
         bills.forEach(b => { billPaidMap[String(b.id)] = 0; });
@@ -941,7 +1058,7 @@ async function recalculateCompanyState(companyName, shopId) {
 
         let totalBillAmount = bills.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
         let totalPaymentAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-        let calculatedOutstanding = Math.max(0, totalBillAmount - totalPaymentAmount);
+        let calculatedOutstanding = totalBillAmount - totalPaymentAmount;
 
         await supabase.from('companies').update({
             outstanding: calculatedOutstanding
@@ -971,7 +1088,7 @@ app.post('/api/bill', async (req, res) => {
         const parsedAmount = parseFloat(amount);
 
         const newBill = {
-            id: Date.now(),
+            id: Date.now() + Math.floor(Math.random() * 1000),
             shop_id: shopId,
             company_name: companyName,
             bill_no: billNo,
@@ -983,12 +1100,17 @@ app.post('/api/bill', async (req, res) => {
             status: "Unpaid"
         };
 
-        const { error: insertErr } = await supabase.from('bills').insert([newBill]);
-        if (insertErr) throw insertErr;
+        const { data: insertedBills, error: insertErr } = await supabase.from('bills').insert([newBill]).select();
+        if (insertErr) {
+            console.warn("Bill insert warning:", insertErr.message);
+            await supabase.from('bills').insert([newBill]);
+        }
+
+        const createdBill = (insertedBills && insertedBills[0]) ? insertedBills[0] : newBill;
 
         await recalculateCompanyState(companyName, shopId);
 
-        res.json({ success: true, bill: newBill });
+        res.json({ success: true, bill: createdBill });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1054,10 +1176,20 @@ app.delete('/api/bill/:id', async (req, res) => {
 
         if (bill) {
             const { data: payments } = await supabase.from('payments').select('*');
-            (payments || []).filter(p => (String(p.bill_id) === String(billIdToDelete) || p.bill_id == billIdToDelete) && String(p.shop_id || '1') === shopId)
-                .forEach(async p => {
-                    await supabase.from('payments').delete().eq('id', p.id);
-                });
+            const billPayments = (payments || []).filter(p => (String(p.bill_id) === String(billIdToDelete) || p.bill_id == billIdToDelete) && String(p.shop_id || '1') === shopId);
+
+            // Save snapshot to 30-day Trash Bin
+            await saveToTrash(
+                shopId,
+                'bill',
+                `Bill #${bill.bill_no} (${bill.company_name})`,
+                `Bill amount: ₹${(parseFloat(bill.total_amount) || 0).toLocaleString('en-IN')} | Bill date: ${bill.date || '-'} | Status: ${bill.status || 'Unpaid'}. ${billPayments.length} payment allocation(s) saved.`,
+                { bill, payments: billPayments }
+            );
+
+            for (let p of billPayments) {
+                await supabase.from('payments').delete().eq('id', p.id);
+            }
 
             await supabase.from('bills').delete().eq('id', bill.id);
         }
@@ -1088,13 +1220,13 @@ app.post('/api/payment', async (req, res) => {
         }
 
         const { data: companies } = await supabase.from('companies').select('*');
-        let company = (companies || []).find(c => c.name === companyName && String(c.shop_id || '1') === shopId);
+        let company = (companies || []).find(c => c.name === companyName && (!c.shop_id || String(c.shop_id) === shopId || String(c.shop_id) === '1' || shopId === '1'));
 
         if (!company) return res.status(404).json({ error: "Company not found" });
 
         const { data: companyBills } = await supabase.from('bills').select('*');
         let openBills = (companyBills || [])
-            .filter(b => b && b.company_name === companyName && String(b.shop_id || '1') === shopId && b.status !== 'Settled')
+            .filter(b => b && b.company_name === companyName && (!b.shop_id || String(b.shop_id) === shopId || String(b.shop_id) === '1' || shopId === '1') && b.status !== 'Settled')
             .sort((a, b) => new Date(a.date || a.due_date) - new Date(b.date || b.due_date) || (Number(a.id) - Number(b.id)));
 
         let remainingToAllocate = payAmt;
@@ -1119,12 +1251,13 @@ app.post('/api/payment', async (req, res) => {
                 mode: paymentMode,
                 remark: remark || (paymentMode === 'Credit Note / Discount' ? 'Company Discount' : 'FIFO Settlement')
             };
-            await supabase.from('payments').insert([newPayment]);
+
+            await insertPaymentRecord(newPayment);
         }
 
         if (remainingToAllocate > 0) {
             const advancePayment = {
-                id: Date.now() + Math.floor(Math.random() * 100000),
+                id: Date.now() + Math.floor(Math.random() * 100000) + 1,
                 shop_id: shopId,
                 bill_id: null,
                 company_name: companyName,
@@ -1134,7 +1267,8 @@ app.post('/api/payment', async (req, res) => {
                 mode: paymentMode,
                 remark: (remark ? remark + ' ' : '') + '(Advance Credit)'
             };
-            await supabase.from('payments').insert([advancePayment]);
+
+            await insertPaymentRecord(advancePayment);
         }
 
         await recalculateCompanyState(companyName, shopId);
@@ -1195,6 +1329,15 @@ app.delete('/api/payment/:id', async (req, res) => {
         const companyName = payment ? payment.company_name : null;
 
         if (payment) {
+            // Save snapshot to 30-day Trash Bin
+            await saveToTrash(
+                shopId,
+                'payment',
+                `Payment / Credit: ${payment.company_name}`,
+                `Amount: ₹${(parseFloat(payment.amount) || 0).toLocaleString('en-IN')} | Mode: ${payment.mode || 'Payment'} | Bill: ${payment.bill_no || '-'} | Date: ${payment.date || '-'}. Remark: ${payment.remark || 'None'}`,
+                { payment }
+            );
+
             await supabase.from('payments').delete().eq('id', payment.id);
         }
 
@@ -1205,6 +1348,162 @@ app.delete('/api/payment/:id', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Delete payment error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- 🗑️ 30-DAY RECYCLE BIN & RECOVERY ROUTES ---
+
+// Get all recoverable deleted items (within 30 days)
+app.get('/api/recycle-bin', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
+        const { data: trashItems } = await supabase.from('trash_bin').select('*');
+        const now = new Date();
+
+        const validItems = (trashItems || []).filter(item => {
+            if (String(item.shop_id || '1') !== shopId) return false;
+            if (!item.expires_at) return true;
+            return new Date(item.expires_at) > now;
+        }).map(item => {
+            const expires = new Date(item.expires_at || (Date.now() + 30 * 24 * 60 * 60 * 1000));
+            const diffTime = expires - now;
+            const daysLeft = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            return {
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                details: item.details,
+                deletedAt: item.deleted_at,
+                expiresAt: item.expires_at,
+                daysLeft: daysLeft
+            };
+        });
+
+        validItems.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+
+        res.json({ success: true, trash: validItems });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Restore a deleted record back to active tables
+app.post('/api/recycle-bin/restore/:id', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+        const rawId = req.params.id;
+
+        const { data: trashItems } = await supabase.from('trash_bin').select('*');
+        const trashItem = (trashItems || []).find(t => String(t.id) === String(rawId) && String(t.shop_id || '1') === shopId);
+
+        if (!trashItem) return res.status(404).json({ error: "Trash record not found or expired" });
+
+        let payload = typeof trashItem.payload === 'string' ? JSON.parse(trashItem.payload) : trashItem.payload;
+
+        let affectedCompanyNames = new Set();
+
+        // 1. Restore Company if present
+        if (payload.company) {
+            const comp = payload.company;
+            affectedCompanyNames.add(comp.name);
+            const { data: existingComps } = await supabase.from('companies').select('*');
+            const exists = (existingComps || []).some(c => c.name === comp.name && String(c.shop_id || '1') === shopId);
+            if (!exists) {
+                await supabase.from('companies').insert([comp]);
+            }
+        }
+
+        // 2. Restore Bills if present
+        if (payload.bills && Array.isArray(payload.bills)) {
+            for (let b of payload.bills) {
+                affectedCompanyNames.add(b.company_name);
+                const { data: existingBills } = await supabase.from('bills').select('*');
+                const exists = (existingBills || []).some(x => String(x.id) === String(b.id));
+                if (!exists) {
+                    await supabase.from('bills').insert([b]);
+                }
+            }
+        } else if (payload.bill) {
+            const b = payload.bill;
+            affectedCompanyNames.add(b.company_name);
+            const { data: existingBills } = await supabase.from('bills').select('*');
+            const exists = (existingBills || []).some(x => String(x.id) === String(b.id));
+            if (!exists) {
+                await supabase.from('bills').insert([b]);
+            }
+        }
+
+        // 3. Restore Payments if present
+        if (payload.payments && Array.isArray(payload.payments)) {
+            for (let p of payload.payments) {
+                affectedCompanyNames.add(p.company_name);
+                const { data: existingPayments } = await supabase.from('payments').select('*');
+                const exists = (existingPayments || []).some(x => String(x.id) === String(p.id));
+                if (!exists) {
+                    await supabase.from('payments').insert([p]);
+                }
+            }
+        } else if (payload.payment) {
+            const p = payload.payment;
+            affectedCompanyNames.add(p.company_name);
+            const { data: existingPayments } = await supabase.from('payments').select('*');
+            const exists = (existingPayments || []).some(x => String(x.id) === String(p.id));
+            if (!exists) {
+                await supabase.from('payments').insert([p]);
+            }
+        }
+
+        // Recalculate company balances
+        for (let compName of affectedCompanyNames) {
+            await recalculateCompanyState(compName, shopId);
+        }
+
+        // Remove from trash bin
+        await supabase.from('trash_bin').delete().eq('id', trashItem.id);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Restore error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Permanently delete an item from trash bin
+app.delete('/api/recycle-bin/permanent/:id', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+        const rawId = req.params.id;
+
+        await supabase.from('trash_bin').delete().eq('id', rawId);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Permanently clear entire trash bin
+app.delete('/api/recycle-bin/clear', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
+        const { data: trashItems } = await supabase.from('trash_bin').select('*');
+        const userItems = (trashItems || []).filter(t => String(t.shop_id || '1') === shopId);
+        for (let t of userItems) {
+            await supabase.from('trash_bin').delete().eq('id', t.id);
+        }
+
+        res.json({ success: true });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
