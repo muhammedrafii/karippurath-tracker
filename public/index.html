@@ -67,12 +67,12 @@
                         <input type="number" id="openingBalance" placeholder="Total Outstanding from Book (₹)" min="0" required class="p-2 border rounded bg-yellow-50">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="bankName" placeholder="Bank Name" required class="p-2 border rounded">
-                        <input type="text" id="accountNo" placeholder="Account No" required class="p-2 border rounded">
+                        <input type="text" id="bankName" placeholder="Bank Name (Optional)" class="p-2 border rounded">
+                        <input type="text" id="accountNo" placeholder="Account No (Optional)" class="p-2 border rounded">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="ifsc" placeholder="IFSC Code" required class="p-2 border rounded">
-                        <input type="text" id="upi" placeholder="UPI ID" required class="p-2 border rounded">
+                        <input type="text" id="ifsc" placeholder="IFSC Code (Optional)" class="p-2 border rounded">
+                        <input type="text" id="upi" placeholder="UPI ID (Optional)" class="p-2 border rounded">
                     </div>
                     <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-bold">Save Company Profile & Opening Balance</button>
                 </form>
@@ -95,8 +95,33 @@
 
         <!-- Companies Summary Table -->
         <div class="bg-white p-5 rounded-lg shadow mb-6">
-            <h3 class="font-bold text-lg mb-2 text-gray-800">🏢 Distributors Summary</h3>
-            <p class="text-xs text-gray-500 mb-3">Click on any company row to view sorted overdue/oldest bills, make payments, apply discounts/credit notes, and manage records.</p>
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">🏢 Distributors Summary</h3>
+                    <p class="text-xs text-gray-500">Click on any company row to view sorted overdue/oldest bills, make payments, apply discounts, and search ledgers.</p>
+                </div>
+            </div>
+
+            <!-- Distributor Search & Filter Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="relative flex-1 min-w-[220px]">
+                    <input type="text" id="companySearchInput" oninput="renderCompaniesTable()" placeholder=" Search distributor by name, bank, account, or UPI..." class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <span class="absolute left-3 top-2.5 text-gray-400 text-sm">🔍</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-gray-600 whitespace-nowrap">Filter Status:</label>
+                    <select id="companyStatusFilter" onchange="renderCompaniesTable()" class="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">All Distributors</option>
+                        <option value="OUTSTANDING">With Outstanding (> ₹0)</option>
+                        <option value="OVERDUE">With Overdue Bills ⚠️</option>
+                        <option value="SETTLED">Fully Settled (₹0)</option>
+                    </select>
+                </div>
+                <div id="companyCountBadge" class="text-xs font-bold text-gray-600 bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200">
+                    0 Companies
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -180,6 +205,24 @@
                         <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-2 border rounded text-xs bg-white">
                         <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded text-xs font-bold hover:bg-purple-700 transition">Apply Credit Note / Discount</button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Modal Ledger Search & Filter Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                <div class="relative flex-1 min-w-[200px]">
+                    <input type="text" id="modalBillSearchInput" oninput="renderModalBills(activeModalCompany)" placeholder="Search bill no, date, amount, status, or remark..." class="w-full pl-8 pr-3 py-1.5 border rounded-md text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <span class="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <label class="text-xs font-bold text-gray-600">Filter Ledger:</label>
+                    <select id="modalBillStatusFilter" onchange="renderModalBills(activeModalCompany)" class="p-1.5 border rounded-md text-xs bg-white font-medium focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">All Bills & Records</option>
+                        <option value="ACTIVE">Active / Pending Bills</option>
+                        <option value="OVERDUE">Overdue Bills Only ⚠️</option>
+                        <option value="SETTLED">Settled Bills Only ✅</option>
+                        <option value="ADVANCE">Advance / Unallocated Credits 💡</option>
+                    </select>
                 </div>
             </div>
 
@@ -985,39 +1028,14 @@
 
                 const select = document.getElementById('billCompanySelect');
                 select.innerHTML = '<option value="">Select Distributor</option>';
-                allData.companies.forEach(comp => {
+                (allData.companies || []).forEach(comp => {
                     const opt = document.createElement('option');
                     opt.value = comp.name;
                     opt.innerText = comp.name;
                     select.appendChild(opt);
                 });
 
-                const tbody = document.getElementById('companiesTableBody');
-                tbody.innerHTML = '';
-                allData.companies.forEach(comp => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b hover:bg-blue-50 cursor-pointer transition';
-                    tr.onclick = (e) => {
-                        if (!e.target.closest('button')) {
-                            openModal(comp.name);
-                        }
-                    };
-                    tr.innerHTML = `
-                        <td class="p-2 font-bold text-blue-900">${comp.name}</td>
-                        <td class="p-2">${comp.creditDays} Days</td>
-                        <td class="p-2 font-bold ${comp.outstanding > 0 ? 'text-red-600' : 'text-green-600'}">₹${comp.outstanding.toLocaleString('en-IN')}</td>
-                        <td class="p-2 text-xs text-gray-600">
-                            <div>${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
-                            <div>IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
-                        </td>
-                        <td class="p-2 flex gap-1 items-center">
-                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 font-bold">View Bills</button>
-                            <button onclick="openEditCompany('${comp.id}', event)" class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-300 font-bold">✏️ Edit</button>
-                            <button onclick="deleteCompany('${comp.id}', event)" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded hover:bg-red-200 font-bold">🗑️ Delete</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                renderCompaniesTable();
 
                 if (activeModalCompany) {
                     renderModalBills(activeModalCompany);
@@ -1027,11 +1045,98 @@
             }
         }
 
+        function renderCompaniesTable() {
+            const tbody = document.getElementById('companiesTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const searchTerm = (document.getElementById('companySearchInput')?.value || '').trim().toLowerCase();
+            const statusFilter = document.getElementById('companyStatusFilter')?.value || 'ALL';
+
+            const today = new Date().toISOString().split('T')[0];
+
+            // Compute overdue amount per company
+            const companyOverdueMap = {};
+            (allData.bills || []).forEach(b => {
+                if (b.status !== 'Settled' && b.dueDate < today) {
+                    companyOverdueMap[b.companyName] = (companyOverdueMap[b.companyName] || 0) + (b.balanceDue || 0);
+                }
+            });
+
+            const companiesList = allData.companies || [];
+
+            const filtered = companiesList.filter(comp => {
+                // Search term matching
+                const matchSearch = !searchTerm || 
+                    (comp.name && comp.name.toLowerCase().includes(searchTerm)) ||
+                    (comp.bankName && comp.bankName.toLowerCase().includes(searchTerm)) ||
+                    (comp.accountNo && comp.accountNo.toLowerCase().includes(searchTerm)) ||
+                    (comp.ifsc && comp.ifsc.toLowerCase().includes(searchTerm)) ||
+                    (comp.upi && comp.upi.toLowerCase().includes(searchTerm)) ||
+                    (comp.creditDays !== undefined && String(comp.creditDays).includes(searchTerm));
+
+                if (!matchSearch) return false;
+
+                // Status filter matching
+                if (statusFilter === 'OUTSTANDING') {
+                    return (comp.outstanding || 0) > 0;
+                } else if (statusFilter === 'OVERDUE') {
+                    return (companyOverdueMap[comp.name] || 0) > 0;
+                } else if (statusFilter === 'SETTLED') {
+                    return (comp.outstanding || 0) <= 0;
+                }
+
+                return true;
+            });
+
+            const badge = document.getElementById('companyCountBadge');
+            if (badge) {
+                badge.innerText = `Showing ${filtered.length} of ${companiesList.length} Distributors`;
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium bg-gray-50/50">🔍 No distributors found ${searchTerm ? `matching "${searchTerm}"` : ''}.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(comp => {
+                const overdueAmt = companyOverdueMap[comp.name] || 0;
+                const hasOverdue = overdueAmt > 0;
+                const tr = document.createElement('tr');
+                tr.className = `border-b hover:bg-blue-50 cursor-pointer transition ${hasOverdue ? 'bg-red-50/40' : ''}`;
+                tr.onclick = (e) => {
+                    if (!e.target.closest('button')) {
+                        openModal(comp.name);
+                    }
+                };
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-blue-900">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span>${comp.name}</span>
+                            ${hasOverdue ? `<span class="bg-red-100 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-2">${comp.creditDays} Days</td>
+                    <td class="p-2 font-bold ${comp.outstanding > 0 ? 'text-red-600' : 'text-green-600'}">₹${(comp.outstanding || 0).toLocaleString('en-IN')}</td>
+                    <td class="p-2 text-xs text-gray-600">
+                        <div>${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
+                        <div>IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
+                    </td>
+                    <td class="p-2 flex gap-1 items-center">
+                        <button onclick="openModal('${comp.name}')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 font-bold">View Bills</button>
+                        <button onclick="openEditCompany('${comp.id}', event)" class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-300 font-bold">✏️ Edit</button>
+                        <button onclick="deleteCompany('${comp.id}', event)" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded hover:bg-red-200 font-bold">🗑️ Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
         function openOverdueModal() {
             const today = new Date().toISOString().split('T')[0];
             const overdueMap = {};
 
-            allData.bills.forEach(bill => {
+            (allData.bills || []).forEach(bill => {
                 if (bill.status !== 'Settled' && bill.dueDate < today) {
                     overdueMap[bill.companyName] = (overdueMap[bill.companyName] || 0) + bill.balanceDue;
                 }
@@ -1074,6 +1179,8 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('gen_pay_date').value = today;
             document.getElementById('disc_date').value = today;
+            if (document.getElementById('modalBillSearchInput')) document.getElementById('modalBillSearchInput').value = '';
+            if (document.getElementById('modalBillStatusFilter')) document.getElementById('modalBillStatusFilter').value = 'ALL';
             renderModalBills(companyName);
             document.getElementById('billModal').classList.remove('hidden');
         }
@@ -1085,10 +1192,47 @@
 
         function renderModalBills(companyName) {
             const tbody = document.getElementById('modalBillsBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
-            const companyBills = allData.bills.filter(b => b.companyName === companyName);
-            const companyPayments = allData.payments.filter(p => p.companyName === companyName);
+            const searchTerm = (document.getElementById('modalBillSearchInput')?.value || '').trim().toLowerCase();
+            const statusFilter = document.getElementById('modalBillStatusFilter')?.value || 'ALL';
+
+            const today = new Date().toISOString().split('T')[0];
+
+            let companyBills = (allData.bills || []).filter(b => b.companyName === companyName);
+            let companyPayments = (allData.payments || []).filter(p => p.companyName === companyName);
+
+            // Filter bills and payments by search term if provided
+            if (searchTerm) {
+                companyBills = companyBills.filter(b => 
+                    (b.billNo && b.billNo.toLowerCase().includes(searchTerm)) ||
+                    (b.date && b.date.includes(searchTerm)) ||
+                    (b.dueDate && b.dueDate.includes(searchTerm)) ||
+                    (b.status && b.status.toLowerCase().includes(searchTerm)) ||
+                    (b.totalAmount !== undefined && String(b.totalAmount).includes(searchTerm)) ||
+                    (b.balanceDue !== undefined && String(b.balanceDue).includes(searchTerm))
+                );
+
+                companyPayments = companyPayments.filter(p =>
+                    (p.billNo && p.billNo.toLowerCase().includes(searchTerm)) ||
+                    (p.mode && p.mode.toLowerCase().includes(searchTerm)) ||
+                    (p.remark && p.remark.toLowerCase().includes(searchTerm)) ||
+                    (p.date && p.date.includes(searchTerm)) ||
+                    (p.amount !== undefined && String(p.amount).includes(searchTerm))
+                );
+            }
+
+            // Status filter
+            if (statusFilter === 'ACTIVE') {
+                companyBills = companyBills.filter(b => b.status !== 'Settled');
+            } else if (statusFilter === 'OVERDUE') {
+                companyBills = companyBills.filter(b => b.status !== 'Settled' && b.dueDate < today);
+            } else if (statusFilter === 'SETTLED') {
+                companyBills = companyBills.filter(b => b.status === 'Settled');
+            } else if (statusFilter === 'ADVANCE') {
+                companyBills = [];
+            }
 
             // Separate active bills and settled bills
             const activeBills = companyBills.filter(b => b.status !== 'Settled');
@@ -1101,7 +1245,7 @@
             settledBills.sort((a, b) => new Date(b.date || b.dueDate) - new Date(a.date || a.dueDate));
 
             if (companyBills.length === 0 && companyPayments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 font-medium">No bills recorded for this company.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium">🔍 No bills or records found matching "${searchTerm || statusFilter}".</td></tr>`;
                 return;
             }
 
@@ -1301,17 +1445,22 @@
                 upi: document.getElementById('upi').value.trim()
             };
 
-            const res = await fetch('/api/company', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(companyData)
-            });
+            try {
+                const res = await fetch('/api/company', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(companyData)
+                });
 
-            if (res.ok) {
-                document.getElementById('companyForm').reset();
-                loadDashboard();
-            } else {
-                alert('Failed to add company');
+                if (res.ok) {
+                    document.getElementById('companyForm').reset();
+                    await loadDashboard();
+                } else {
+                    const data = await res.json();
+                    alert('Failed to add company: ' + (data.error || 'Server error'));
+                }
+            } catch (err) {
+                alert('Error adding company: ' + err.message);
             }
         }
 
@@ -1324,17 +1473,22 @@
                 amount: document.getElementById('billAmount').value
             };
 
-            const res = await fetch('/api/bill', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(billData)
-            });
+            try {
+                const res = await fetch('/api/bill', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(billData)
+                });
 
-            if (res.ok) {
-                document.getElementById('billForm').reset();
-                loadDashboard();
-            } else {
-                alert('Failed to add bill');
+                if (res.ok) {
+                    document.getElementById('billForm').reset();
+                    await loadDashboard();
+                } else {
+                    const data = await res.json();
+                    alert('Failed to add bill: ' + (data.error || 'Server error'));
+                }
+            } catch (err) {
+                alert('Error adding bill: ' + err.message);
             }
         }
 
@@ -1356,31 +1510,35 @@
                 remark = document.getElementById('gen_pay_remark').value.trim();
             }
 
-            const res = await fetch('/api/payment', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    companyName: activeModalCompany,
-                    paymentAmount: amount,
-                    paymentDate: date,
-                    paymentMode: payMode,
-                    remark
-                })
-            });
+            try {
+                const res = await fetch('/api/payment', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        companyName: activeModalCompany,
+                        paymentAmount: amount,
+                        paymentDate: date,
+                        paymentMode: payMode,
+                        remark
+                    })
+                });
 
-            if (res.ok) {
-                if (mode === 'Credit Note / Discount') {
-                    document.getElementById('discountForm').reset();
+                if (res.ok) {
+                    if (mode === 'Credit Note / Discount') {
+                        document.getElementById('discountForm').reset();
+                    } else {
+                        document.getElementById('generalPaymentForm').reset();
+                    }
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('gen_pay_date').value = today;
+                    document.getElementById('disc_date').value = today;
+                    await loadDashboard();
                 } else {
-                    document.getElementById('generalPaymentForm').reset();
+                    const data = await res.json();
+                    alert('Failed to record payment: ' + (data.error || 'Server error'));
                 }
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('gen_pay_date').value = today;
-                document.getElementById('disc_date').value = today;
-                loadDashboard();
-            } else {
-                const err = await res.json();
-                alert('Error applying payment/discount: ' + (err.error || 'Failed'));
+            } catch (err) {
+                alert('Error recording payment: ' + err.message);
             }
         }
 
