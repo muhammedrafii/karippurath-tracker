@@ -2,11 +2,6 @@
 
 A full-stack, multi-tenant ledger and dues management web application designed for plumbing shops, hardware depots, and building material suppliers. Easily track distributor purchase bills, payment due dates, FIFO auto-settlements, credit notes, and supplier bank/UPI payment details.
 
-## Shop Due Tracker and Ledger Management
-
-  
-🔗 New Link: https://shopledgermangement.vercel.app/
-
 ---
 
 ## 🌟 Key Features
@@ -91,10 +86,11 @@ Open `http://localhost:3000` in your web browser.
 
 ---
 
-## 🗄️ Supabase Database Setup
+## 🗄️ Supabase Database Setup & Migration
 
-To link your project to a real Supabase instance, execute the following SQL script in your **Supabase SQL Editor**:
+To link your project to a real Supabase instance, copy and run the following SQL script in your **Supabase SQL Editor**:
 
+### 1. Complete Fresh Setup Script
 ```sql
 -- 1. Create Shops Table
 CREATE TABLE IF NOT EXISTS public.shops (
@@ -102,6 +98,7 @@ CREATE TABLE IF NOT EXISTS public.shops (
     shop_name TEXT NOT NULL,
     owner_name TEXT,
     email TEXT UNIQUE NOT NULL,
+    username TEXT,
     password TEXT NOT NULL,
     otp_code TEXT,
     otp_expires_at TIMESTAMPTZ,
@@ -142,11 +139,51 @@ CREATE TABLE IF NOT EXISTS public.payments (
     id BIGSERIAL PRIMARY KEY,
     shop_id UUID REFERENCES public.shops(id) ON DELETE CASCADE,
     company_name TEXT NOT NULL,
+    bill_id BIGINT,
+    bill_no TEXT,
     amount NUMERIC(12, 2) NOT NULL,
     date DATE NOT NULL,
+    mode TEXT DEFAULT 'NEFT',
     payment_mode TEXT DEFAULT 'NEFT',
     remark TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Create 30-Day Trash / Recycle Bin Table
+CREATE TABLE IF NOT EXISTS public.trash_bin (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    details TEXT,
+    deleted_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    payload TEXT
+);
+```
+
+### 2. Upgrade Script for Existing Supabase Databases
+If you already created the tables earlier, run this one-click upgrade script in Supabase SQL Editor:
+```sql
+-- Add missing columns to payments
+ALTER TABLE IF EXISTS public.payments ADD COLUMN IF NOT EXISTS bill_id BIGINT;
+ALTER TABLE IF EXISTS public.payments ADD COLUMN IF NOT EXISTS bill_no TEXT;
+ALTER TABLE IF EXISTS public.payments ADD COLUMN IF NOT EXISTS mode TEXT;
+ALTER TABLE IF EXISTS public.payments ADD COLUMN IF NOT EXISTS payment_mode TEXT;
+
+-- Add username column to shops if missing
+ALTER TABLE IF EXISTS public.shops ADD COLUMN IF NOT EXISTS username TEXT;
+
+-- Create 30-day Recycle Bin table
+CREATE TABLE IF NOT EXISTS public.trash_bin (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    details TEXT,
+    deleted_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    payload TEXT
 );
 ```
 
