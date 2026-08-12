@@ -803,6 +803,8 @@ app.post('/api/company', async (req, res) => {
             }
         }
 
+        await logActivity(shopId, 'CREATE_COMPANY', `Added distributor profile: "${name}" (Credit: ${parsedCreditDays} days, Opening Bal: ₹${parsedOpeningBal.toLocaleString('en-IN')})`, { name, creditDays: parsedCreditDays, openingBalance: parsedOpeningBal });
+
         res.json({ success: true, company: { id: createdComp.id, name, creditDays: parsedCreditDays, outstanding: parsedOpeningBal, bankName, accountNo, ifsc, upi } });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -854,6 +856,8 @@ app.put('/api/company/:id', async (req, res) => {
         const { error: updateErr } = await supabase.from('companies').update(updatedData).eq('id', existing.id);
         if (updateErr) throw updateErr;
 
+        await logActivity(shopId, 'UPDATE_COMPANY', `Updated profile details for distributor "${existing.name}"`, { name: existing.name });
+
         res.json({ success: true, company: { id: existing.id, ...updatedData } });
     } catch (err) {
         console.error("Update company error:", err);
@@ -891,6 +895,8 @@ app.delete('/api/company/:id', async (req, res) => {
                 { company: comp, bills: compBills, payments: compPayments }
             );
 
+            await logActivity(shopId, 'DELETE_COMPANY', `Moved distributor profile "${comp.name}" (Outstanding: ₹${(parseFloat(comp.outstanding)||0).toLocaleString('en-IN')}) to Recycle Bin`, { name: comp.name });
+
             for (let p of compPayments) {
                 await supabase.from('payments').delete().eq('id', p.id);
             }
@@ -911,6 +917,43 @@ app.delete('/api/company/:id', async (req, res) => {
 // Local in-memory array cache for trash items to ensure instant reliability across local and Supabase stores
 const localTrashBin = [];
 const deletedTrashIds = new Set();
+
+// Local in-memory cache for 30-Day Activity Logs
+const localActivityLogs = [];
+
+// Helper to log system events (auto-purged after 30 days)
+async function logActivity(shopId, action, description, metadata = {}) {
+    if (!shopId) return;
+    const numericId = String(Date.now() + Math.floor(Math.random() * 100000));
+    const logRecord = {
+        id: numericId,
+        shop_id: String(shopId),
+        action: action,
+        description: description,
+        metadata: typeof metadata === 'string' ? metadata : JSON.stringify(metadata),
+        created_at: new Date().toISOString()
+    };
+
+    localActivityLogs.unshift(logRecord); // Newest first
+
+    // Auto purge in-memory logs older than 30 days
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    while (localActivityLogs.length > 0 && new Date(localActivityLogs[localActivityLogs.length - 1].created_at).getTime() < thirtyDaysAgo) {
+        localActivityLogs.pop();
+    }
+
+    try {
+        const { error } = await supabase.from('activity_log').insert([logRecord]);
+        if (error) {
+            console.warn("Notice: Error writing to Supabase activity_log:", error.message);
+        }
+        // Background purge Supabase activity_log records older than 30 days
+        const isoThirtyDaysAgo = new Date(thirtyDaysAgo).toISOString();
+        await supabase.from('activity_log').delete().lt('created_at', isoThirtyDaysAgo);
+    } catch (e) {
+        // Safe fallback if activity_log table does not exist in Supabase
+    }
+}
 
 // Helper to save deleted items to 30-Day Recycle Bin
 async function saveToTrash(shopId, type, title, details, payload) {
@@ -1120,6 +1163,8 @@ app.post('/api/bill', async (req, res) => {
 
         await recalculateCompanyState(companyName, shopId);
 
+        await logActivity(shopId, 'CREATE_BILL', `Created Purchase Bill #${billNo} for "${companyName}" (Amount: ₹${parsedAmount.toLocaleString('en-IN')}, Date: ${date})`, { billNo, companyName, amount: parsedAmount });
+
         res.json({ success: true, bill: createdBill });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1162,6 +1207,8 @@ app.put('/api/bill/:id', async (req, res) => {
         await supabase.from('bills').update(updateFields).eq('id', bill.id);
         await recalculateCompanyState(bill.company_name, shopId);
 
+        await logActivity(shopId, 'UPDATE_BILL', `Updated Purchase Bill #${billNo} for "${bill.company_name}" (New Amount: ₹${newTotal.toLocaleString('en-IN')})`, { billNo, companyName: bill.company_name });
+
         res.json({ success: true, bill: updateFields });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1196,6 +1243,8 @@ app.delete('/api/bill/:id', async (req, res) => {
                 `Bill amount: ₹${(parseFloat(bill.total_amount) || 0).toLocaleString('en-IN')} | Bill date: ${bill.date || '-'} | Status: ${bill.status || 'Unpaid'}. ${billPayments.length} payment allocation(s) saved.`,
                 { bill, payments: billPayments }
             );
+
+            await logActivity(shopId, 'DELETE_BILL', `Moved Purchase Bill #${bill.bill_no} ("${bill.company_name}", ₹${(parseFloat(bill.total_amount)||0).toLocaleString('en-IN')}) to Recycle Bin`, { billNo: bill.bill_no, companyName: bill.company_name });
 
             for (let p of billPayments) {
                 await supabase.from('payments').delete().eq('id', p.id);
@@ -1283,6 +1332,8 @@ app.post('/api/payment', async (req, res) => {
 
         await recalculateCompanyState(companyName, shopId);
 
+        await logActivity(shopId, 'RECORD_PAYMENT', `Recorded payment/credit of ₹${payAmt.toLocaleString('en-IN')} (${paymentMode || 'NEFT'}) to "${companyName}"`, { companyName, amount: payAmt, mode: paymentMode });
+
         res.json({ success: true });
     } catch (err) {
         console.error("Payment error:", err);
@@ -1317,6 +1368,8 @@ app.put('/api/payment/:id', async (req, res) => {
         await supabase.from('payments').update(updateData).eq('id', payment.id);
         await recalculateCompanyState(payment.company_name, shopId);
 
+        await logActivity(shopId, 'UPDATE_PAYMENT', `Updated payment record for "${payment.company_name}" to ₹${newPayAmt.toLocaleString('en-IN')}`, { companyName: payment.company_name, amount: newPayAmt });
+
         res.json({ success: true, payment: updateData });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1348,6 +1401,8 @@ app.delete('/api/payment/:id', async (req, res) => {
                 { payment }
             );
 
+            await logActivity(shopId, 'DELETE_PAYMENT', `Moved payment record of ₹${(parseFloat(payment.amount)||0).toLocaleString('en-IN')} ("${payment.company_name}") to Recycle Bin`, { companyName: payment.company_name });
+
             await supabase.from('payments').delete().eq('id', payment.id);
         }
 
@@ -1358,6 +1413,49 @@ app.delete('/api/payment/:id', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Delete payment error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- 📜 30-DAY ACTIVITY LOG ENDPOINTS ---
+
+// Fetch 30-Day Activity Log
+app.get('/api/activity-log', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const isoThirtyDaysAgo = new Date(thirtyDaysAgo).toISOString();
+
+        let dbLogs = [];
+        try {
+            const { data } = await supabase.from('activity_log').select('*');
+            if (Array.isArray(data)) dbLogs = data;
+
+            // Background purge DB records older than 30 days
+            await supabase.from('activity_log').delete().lt('created_at', isoThirtyDaysAgo);
+        } catch (e) {}
+
+        const combinedMap = new Map();
+        for (let l of [...dbLogs, ...localActivityLogs]) {
+            if (l && l.id) {
+                combinedMap.set(String(l.id), l);
+            }
+        }
+
+        const validLogs = Array.from(combinedMap.values()).filter(l => {
+            if (!l || !l.created_at) return false;
+            if (l.shop_id && String(l.shop_id) !== shopId && String(l.shop_id) !== '1' && shopId !== '1') return false;
+            return new Date(l.created_at).getTime() >= thirtyDaysAgo;
+        });
+
+        // Sort descending (newest first)
+        validLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        res.json({ success: true, logs: validLogs, retentionDays: 30 });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
@@ -1516,6 +1614,8 @@ app.post('/api/recycle-bin/restore/:id', async (req, res) => {
             }
         } catch (e) {}
 
+        await logActivity(shopId, 'RESTORE_ITEM', `Restored item "${trashItem.title || 'Record'}" from Recycle Bin back to active records`, { title: trashItem.title });
+
         res.json({ success: true });
     } catch (err) {
         console.error("Restore error:", err);
@@ -1588,6 +1688,8 @@ app.delete('/api/recycle-bin/permanent/:id', async (req, res) => {
         // 2. Remove from Supabase database
         await deleteTrashItemFromDb(rawId);
 
+        await logActivity(shopId, 'PERMANENT_DELETE', `Permanently deleted an item from Recycle Bin`, { trashId: rawId });
+
         res.json({ success: true });
     } catch (err) {
         console.error("Permanent delete error:", err);
@@ -1627,6 +1729,8 @@ app.delete('/api/recycle-bin/clear', async (req, res) => {
 
         // 3. Clear Supabase database for this shop
         await clearAllTrashFromDb(shopId);
+
+        await logActivity(shopId, 'CLEAR_TRASH', `Emptied all records from Recycle Bin`, {});
 
         res.json({ success: true });
     } catch (err) {
