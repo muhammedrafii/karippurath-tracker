@@ -908,23 +908,33 @@ app.delete('/api/company/:id', async (req, res) => {
 });
 
 
+// Local in-memory array cache for trash items to ensure instant reliability across local and Supabase stores
+const localTrashBin = [];
+const deletedTrashIds = new Set();
+
 // Helper to save deleted items to 30-Day Recycle Bin
 async function saveToTrash(shopId, type, title, details, payload) {
+    const numericId = String(Date.now() + Math.floor(Math.random() * 100000));
     const trashRecord = {
-        id: 'trash_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+        id: numericId,
         shop_id: String(shopId),
         type: type, // 'company' | 'bill' | 'payment'
         title: title,
         details: details,
         deleted_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        payload: JSON.stringify(payload)
+        payload: typeof payload === 'string' ? payload : JSON.stringify(payload)
     };
 
+    localTrashBin.push(trashRecord);
+
     try {
-        await supabase.from('trash_bin').insert([trashRecord]);
+        const { error } = await supabase.from('trash_bin').insert([trashRecord]);
+        if (error) {
+            console.warn("Notice: Error saving snapshot to Supabase trash_bin:", error.message);
+        }
     } catch (err) {
-        console.warn("Notice: Error saving snapshot to trash_bin:", err ? err.message : 'Unknown');
+        console.warn("Notice: Exception saving snapshot to trash_bin:", err ? err.message : 'Unknown');
     }
 }
 
@@ -1361,11 +1371,29 @@ app.get('/api/recycle-bin', async (req, res) => {
         if (!shop) return res.status(401).json({ error: "Unauthorized" });
         const shopId = String(shop.id);
 
-        const { data: trashItems } = await supabase.from('trash_bin').select('*');
-        const now = new Date();
+        let itemsFromDb = [];
+        try {
+            const { data, error } = await supabase.from('trash_bin').select('*');
+            if (!error && Array.isArray(data)) {
+                itemsFromDb = data;
+            }
+        } catch (e) {
+            console.warn("Notice: Error querying trash_bin table in Supabase:", e.message);
+        }
 
-        const validItems = (trashItems || []).filter(item => {
-            if (String(item.shop_id || '1') !== shopId) return false;
+        // Deduplicate records from DB and in-memory cache
+        const combinedMap = new Map();
+        for (let item of [...itemsFromDb, ...localTrashBin]) {
+            if (item && item.id) {
+                combinedMap.set(String(item.id), item);
+            }
+        }
+
+        const now = new Date();
+        const validItems = Array.from(combinedMap.values()).filter(item => {
+            if (!item || !item.id) return false;
+            if (deletedTrashIds.has(String(item.id))) return false;
+            if (item.shop_id && String(item.shop_id) !== shopId && String(item.shop_id) !== '1' && shopId !== '1') return false;
             if (!item.expires_at) return true;
             return new Date(item.expires_at) > now;
         }).map(item => {
@@ -1373,7 +1401,7 @@ app.get('/api/recycle-bin', async (req, res) => {
             const diffTime = expires - now;
             const daysLeft = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             return {
-                id: item.id,
+                id: String(item.id),
                 type: item.type,
                 title: item.title,
                 details: item.details,
@@ -1397,10 +1425,16 @@ app.post('/api/recycle-bin/restore/:id', async (req, res) => {
         const shop = await getAuthShop(req);
         if (!shop) return res.status(401).json({ error: "Unauthorized" });
         const shopId = String(shop.id);
-        const rawId = req.params.id;
+        const rawId = String(req.params.id);
 
-        const { data: trashItems } = await supabase.from('trash_bin').select('*');
-        const trashItem = (trashItems || []).find(t => String(t.id) === String(rawId) && String(t.shop_id || '1') === shopId);
+        let itemsFromDb = [];
+        try {
+            const { data } = await supabase.from('trash_bin').select('*');
+            if (Array.isArray(data)) itemsFromDb = data;
+        } catch (e) {}
+
+        const allTrash = [...itemsFromDb, ...localTrashBin];
+        const trashItem = allTrash.find(t => String(t.id) === rawId && (!t.shop_id || String(t.shop_id) === shopId || String(t.shop_id) === '1' || shopId === '1'));
 
         if (!trashItem) return res.status(404).json({ error: "Trash record not found or expired" });
 
@@ -1464,8 +1498,23 @@ app.post('/api/recycle-bin/restore/:id', async (req, res) => {
             await recalculateCompanyState(compName, shopId);
         }
 
-        // Remove from trash bin
-        await supabase.from('trash_bin').delete().eq('id', trashItem.id);
+        // Mark as deleted in trash blacklist
+        deletedTrashIds.add(rawId);
+
+        // Remove from local memory cache
+        for (let i = localTrashBin.length - 1; i >= 0; i--) {
+            if (String(localTrashBin[i].id) === rawId) {
+                localTrashBin.splice(i, 1);
+            }
+        }
+
+        // Remove from Supabase trash bin
+        try {
+            await supabase.from('trash_bin').delete().eq('id', rawId);
+            if (!isNaN(rawId)) {
+                await supabase.from('trash_bin').delete().eq('id', parseInt(rawId, 10));
+            }
+        } catch (e) {}
 
         res.json({ success: true });
     } catch (err) {
@@ -1474,17 +1523,74 @@ app.post('/api/recycle-bin/restore/:id', async (req, res) => {
     }
 });
 
+// Helper to safely delete trash item from Supabase DB by string or numeric ID
+async function deleteTrashItemFromDb(rawId) {
+    if (rawId == null) return;
+    const cleanId = String(rawId).trim();
+    if (!cleanId) return;
+
+    try {
+        await supabase.from('trash_bin').delete().eq('id', cleanId);
+    } catch (e) {}
+
+    if (!isNaN(cleanId) && /^\d+$/.test(cleanId)) {
+        try {
+            await supabase.from('trash_bin').delete().eq('id', Number(cleanId));
+        } catch (e) {}
+    }
+}
+
+// Helper to safely clear all trash items from Supabase DB
+async function clearAllTrashFromDb(shopId) {
+    let dbItems = [];
+    try {
+        const { data } = await supabase.from('trash_bin').select('id, shop_id');
+        if (Array.isArray(data)) dbItems = data;
+    } catch (e) {}
+
+    if (shopId && shopId !== '1') {
+        try {
+            await supabase.from('trash_bin').delete().eq('shop_id', String(shopId));
+        } catch (e) {}
+    } else {
+        try {
+            await supabase.from('trash_bin').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (e) {}
+    }
+
+    for (let item of dbItems) {
+        if (item && item.id != null) {
+            if (!shopId || shopId === '1' || !item.shop_id || String(item.shop_id) === String(shopId)) {
+                await deleteTrashItemFromDb(item.id);
+            }
+        }
+    }
+}
+
 // Permanently delete an item from trash bin
 app.delete('/api/recycle-bin/permanent/:id', async (req, res) => {
     try {
         const shop = await getAuthShop(req);
         if (!shop) return res.status(401).json({ error: "Unauthorized" });
         const shopId = String(shop.id);
-        const rawId = req.params.id;
+        const rawId = String(req.params.id);
 
-        await supabase.from('trash_bin').delete().eq('id', rawId);
+        // Mark as deleted in trash blacklist
+        deletedTrashIds.add(rawId);
+
+        // 1. Remove from local memory cache
+        for (let i = localTrashBin.length - 1; i >= 0; i--) {
+            if (String(localTrashBin[i].id) === rawId) {
+                localTrashBin.splice(i, 1);
+            }
+        }
+
+        // 2. Remove from Supabase database
+        await deleteTrashItemFromDb(rawId);
+
         res.json({ success: true });
     } catch (err) {
+        console.error("Permanent delete error:", err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1496,14 +1602,35 @@ app.delete('/api/recycle-bin/clear', async (req, res) => {
         if (!shop) return res.status(401).json({ error: "Unauthorized" });
         const shopId = String(shop.id);
 
-        const { data: trashItems } = await supabase.from('trash_bin').select('*');
-        const userItems = (trashItems || []).filter(t => String(t.shop_id || '1') === shopId);
-        for (let t of userItems) {
-            await supabase.from('trash_bin').delete().eq('id', t.id);
+        // 1. Mark all current items as deleted in blacklist
+        let itemsFromDb = [];
+        try {
+            const { data } = await supabase.from('trash_bin').select('*');
+            if (Array.isArray(data)) itemsFromDb = data;
+        } catch (e) {}
+
+        for (let item of [...itemsFromDb, ...localTrashBin]) {
+            if (item && item.id != null) {
+                if (!item.shop_id || String(item.shop_id) === shopId || String(item.shop_id) === '1' || shopId === '1') {
+                    deletedTrashIds.add(String(item.id));
+                }
+            }
         }
+
+        // 2. Clear local memory cache for this shop
+        for (let i = localTrashBin.length - 1; i >= 0; i--) {
+            const t = localTrashBin[i];
+            if (!t.shop_id || String(t.shop_id) === shopId || String(t.shop_id) === '1' || shopId === '1') {
+                localTrashBin.splice(i, 1);
+            }
+        }
+
+        // 3. Clear Supabase database for this shop
+        await clearAllTrashFromDb(shopId);
 
         res.json({ success: true });
     } catch (err) {
+        console.error("Clear trash error:", err);
         res.status(500).json({ error: err.message });
     }
 });
