@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shop Ledger & Dues Tracker</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1d4ed8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shop Ledger">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -21,6 +29,9 @@
 
             <!-- User / Shop Controls -->
             <div id="authHeaderControls" class="flex flex-wrap items-center gap-2">
+                <button onclick="openInstallAppModal()" class="text-xs bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold py-1.5 px-3 rounded flex items-center gap-1.5 border border-amber-300 shadow-sm transition cursor-pointer">
+                    📲 Add App to Home Screen
+                </button>
                 <div id="userBadgeSection" class="text-right bg-blue-800/80 px-3 py-1 rounded border border-blue-600">
                     <div class="text-xs text-blue-200">Owner: <span id="headerOwnerName" class="font-bold text-white">Not Logged In</span></div>
                     <div class="text-xs text-blue-300">Email: <span id="headerEmail" class="font-bold text-yellow-300">Guest</span></div>
@@ -199,6 +210,64 @@
                     </thead>
                     <tbody id="overdueModalBody"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Add to Home Screen Modal -->
+    <div id="pwaInstallModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-blue-100 relative">
+            <button onclick="closeInstallAppModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 font-bold text-xl p-1">✕</button>
+            
+            <div class="text-center mb-5">
+                <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-lg shadow-blue-500/30 mb-3 border-2 border-blue-400">
+                    🔧
+                </div>
+                <h3 class="font-extrabold text-xl text-gray-900">Add to Home Screen</h3>
+                <p class="text-xs text-gray-500 mt-1">Install <span class="font-bold text-blue-700">Shop Ledger</span> as an app on your phone or desktop for quick offline access!</p>
+            </div>
+
+            <!-- Native Install Prompt Button Container -->
+            <div id="pwaDirectPromptBox" class="bg-blue-50 p-4 rounded-xl border border-blue-200 mb-4 text-center">
+                <p class="text-xs text-blue-900 font-semibold mb-3">Install directly with one click:</p>
+                <button onclick="triggerPWAInstall()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-sm">
+                    ⚡ Install App Now
+                </button>
+            </div>
+
+            <!-- Platform Specific Instructions -->
+            <div class="space-y-3 border-t border-gray-100 pt-4 text-left">
+                <!-- iOS Instructions -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex gap-3 items-start">
+                    <span class="text-xl">🍏</span>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800">iPhone / iPad (Safari)</h4>
+                        <ol class="text-[11px] text-slate-600 list-decimal list-inside space-y-0.5 mt-1">
+                            <li>Tap the <span class="font-bold">Share icon</span> <span class="bg-slate-200 px-1 py-0.5 rounded text-[10px]">📤</span> at the bottom of Safari</li>
+                            <li>Scroll down and tap <span class="font-bold text-blue-600">"Add to Home Screen" ➕</span></li>
+                            <li>Tap <span class="font-bold">Add</span> in the top right corner</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Android / Chrome / Desktop Instructions -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex gap-3 items-start">
+                    <span class="text-xl">🤖</span>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800">Android / Chrome / Desktop</h4>
+                        <ol class="text-[11px] text-slate-600 list-decimal list-inside space-y-0.5 mt-1">
+                            <li>Tap the <span class="font-bold">Menu icon</span> <span class="bg-slate-200 px-1 py-0.5 rounded text-[10px]">⁝</span> at top right</li>
+                            <li>Select <span class="font-bold text-blue-600">"Add to Home Screen"</span> or <span class="font-bold text-blue-600">"Install app"</span></li>
+                            <li>Confirm installation</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 text-center">
+                <button onclick="closeInstallAppModal()" class="text-xs font-bold text-gray-500 hover:text-gray-800 py-1.5 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
+                    Done / Close
+                </button>
             </div>
         </div>
     </div>
@@ -2803,6 +2872,59 @@
 
             printWin.document.write(html);
             printWin.document.close();
+        }
+
+        // --- 📲 PWA App Installation Logic ---
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const promptBox = document.getElementById('pwaDirectPromptBox');
+            if (promptBox) promptBox.classList.remove('hidden');
+        });
+
+        function openInstallAppModal() {
+            const modal = document.getElementById('pwaInstallModal');
+            if (modal) modal.classList.remove('hidden');
+            const promptBox = document.getElementById('pwaDirectPromptBox');
+            if (promptBox) {
+                if (deferredPrompt) {
+                    promptBox.classList.remove('hidden');
+                } else {
+                    // Show helpful info if native prompt hasn't fired
+                    promptBox.classList.remove('hidden');
+                }
+            }
+        }
+
+        function closeInstallAppModal() {
+            const modal = document.getElementById('pwaInstallModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function triggerPWAInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showToast('App added to Home Screen successfully!', 'success');
+                    closeInstallAppModal();
+                }
+                deferredPrompt = null;
+            } else {
+                showToast('Follow the step-by-step instructions below to add to Home Screen!', 'info');
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(() => {
+                    console.log('Service Worker Registered');
+                }).catch((err) => {
+                    console.warn('SW registration failed:', err);
+                });
+            });
         }
 
         document.addEventListener('click', (e) => {
