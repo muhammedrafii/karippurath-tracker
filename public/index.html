@@ -26,11 +26,16 @@
     <div id="inAppBrowserWarning" class="hidden bg-amber-400 text-slate-950 px-4 py-2.5 text-xs sm:text-sm font-bold flex flex-wrap items-center justify-between gap-2 shadow-md border-b border-amber-500 sticky top-0 z-[10002]">
         <div class="flex items-center gap-2">
             <span class="text-lg">⚠️</span>
-            <span>In-App Browser Detected (WhatsApp/Social app). To install as app, please open in <strong>Google Chrome</strong> or <strong>Safari</strong>.</span>
+            <span>In-App Browser Detected (WhatsApp/Social app). To install as an app, please open in <strong>Google Chrome</strong> or <strong>Safari</strong>.</span>
         </div>
-        <button onclick="copyAppLink()" class="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5 rounded-lg font-extrabold shadow-xs transition shrink-0 cursor-pointer">
-            📋 Copy App Link
-        </button>
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openInNativeChrome()" class="bg-blue-700 hover:bg-blue-800 text-white text-xs px-3 py-1.5 rounded-lg font-extrabold shadow-xs transition shrink-0 cursor-pointer flex items-center gap-1">
+                🚀 Open in Chrome
+            </button>
+            <button onclick="copyAppLink()" class="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5 rounded-lg font-extrabold shadow-xs transition shrink-0 cursor-pointer">
+                📋 Copy Link
+            </button>
+        </div>
     </div>
 
     <div class="container mx-auto p-4 max-w-6xl">
@@ -53,8 +58,8 @@
 
                 <!-- Right Side: Install Button & User Badge -->
                 <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
-                    <button onclick="openInstallAppModal()" class="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-amber-300 shadow-md shadow-amber-500/10 transition cursor-pointer active:scale-95">
-                        <span class="text-sm">📲</span> Add to Home Screen
+                    <button id="headerInstallBtn" onclick="handleOneTapInstall()" class="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-amber-300 shadow-md shadow-amber-500/10 transition cursor-pointer active:scale-95">
+                        <span class="text-sm">📲</span> <span id="headerInstallBtnText">Add to Home Screen</span>
                     </button>
                     <div id="userBadgeSection" class="flex items-center gap-2.5 bg-slate-800/80 backdrop-blur-xs px-3.5 py-1.5 rounded-xl border border-slate-700/80 shadow-xs text-left">
                         <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center text-xs font-bold shrink-0">
@@ -404,11 +409,17 @@
                     <p class="text-xs text-slate-500 mt-0.5">Install on your phone or computer for instant 1-tap launcher access and offline ledger viewing.</p>
                 </div>
 
-                <!-- Already Installed Banner (Hidden unless standalone mode) -->
-                <div id="pwaAlreadyInstalledBox" class="hidden bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-center">
-                    <span class="text-lg">🎉</span>
-                    <p class="text-xs font-extrabold text-emerald-950 mt-1">App is Already Installed!</p>
-                    <p class="text-[11px] text-emerald-800 mt-0.5">You are currently using Shop Ledger in native app mode.</p>
+                <!-- Already Installed Banner -->
+                <div id="pwaAlreadyInstalledBox" class="hidden bg-emerald-50 p-4 rounded-xl border border-emerald-300 text-center shadow-xs">
+                    <div class="text-3xl mb-1">✅</div>
+                    <p class="text-sm font-black text-emerald-950">App Already Installed!</p>
+                    <p class="text-xs text-emerald-800 mt-1 font-medium">Shop Ledger is already added to your phone's Home Screen & App Drawer.</p>
+                    <div class="mt-3 p-2.5 bg-emerald-100/70 rounded-lg text-left text-[11px] text-emerald-900 space-y-1 font-medium">
+                        <p><strong>💡 How to launch:</strong> Look for the 🏪 <strong>Shop Ledger</strong> icon on your phone's Home Screen or App Drawer to open it instantly as a native app!</p>
+                    </div>
+                    <button onclick="closeInstallAppModal()" class="w-full mt-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer">
+                        ✓ Got it, Close
+                    </button>
                 </div>
 
                 <!-- One Click Install Button Container -->
@@ -475,6 +486,38 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- Floating 1-Tap Quick Install Banner for Mobile & Web -->
+    <div id="pwaFloatingInstallBanner" class="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-blue-500/40 z-[9990] flex items-center justify-between gap-3 hidden backdrop-blur-md">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 bg-blue-600/30 text-blue-400 border border-blue-400/40 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-inner">
+                📲
+            </div>
+            <div>
+                <div class="text-xs font-black leading-tight text-amber-300">Install Shop Ledger App</div>
+                <div class="text-[10px] text-slate-300 font-medium leading-tight">1-Tap Home Screen Launcher & Offline Access</div>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="handleOneTapInstall()" class="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 text-xs font-black py-2 px-3 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1">
+                <span>⚡ Install</span>
+            </button>
+            <button onclick="dismissFloatingInstallBanner()" class="text-slate-400 hover:text-white text-lg px-1.5 py-0.5 rounded-lg">
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- iOS Safari Pointer Guidance Banner -->
+    <div id="iosSafariPointer" class="fixed bottom-3 left-1/2 -translate-x-1/2 bg-slate-950 text-white px-5 py-3 rounded-2xl shadow-2xl border-2 border-amber-400 z-[10003] hidden flex flex-col items-center text-center max-w-xs animate-bounce">
+        <div class="flex items-center gap-2">
+            <span class="text-amber-400 text-lg">🍏</span>
+            <span class="text-amber-300 font-extrabold text-xs">Tap Safari Share Button 📤</span>
+        </div>
+        <span class="text-[11px] text-slate-200 mt-1">Scroll down and select <strong class="text-amber-300">"Add to Home Screen" ➕</strong></span>
+        <button onclick="closeIosPointer()" class="mt-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg font-bold">Got it, close ✕</button>
+        <div class="text-amber-400 text-xl font-black mt-0.5 animate-pulse">↓</div>
     </div>
 
     <!-- Company Details & Bills Modal -->
@@ -3396,8 +3439,9 @@
             printWin.document.close();
         }
 
-        // --- 📲 PWA App Installation & Device Helpers ---
+        // --- 📲 PWA App Installation & Multi-Device 1-Tap Engine ---
         let deferredPrompt = null;
+        let bannerDismissed = false;
 
         function isRunningStandalone() {
             return (window.matchMedia('(display-mode: standalone)').matches) || 
@@ -3412,6 +3456,21 @@
 
         function isIosDevice() {
             return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        }
+
+        function isAndroidDevice() {
+            return /Android/i.test(navigator.userAgent);
+        }
+
+        // Open in Chrome directly from WhatsApp/Instagram in-app browsers
+        function openInNativeChrome() {
+            if (isAndroidDevice()) {
+                const cleanUrl = window.location.href.replace(/^https?:\/\//, '');
+                window.location.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
+            } else {
+                copyAppLink();
+                showToast('Link copied! Please open Apple Safari or Google Chrome to install.', 'info');
+            }
         }
 
         function copyAppLink() {
@@ -3451,22 +3510,152 @@
             }
         }
 
+        function dismissFloatingInstallBanner() {
+            bannerDismissed = true;
+            const banner = document.getElementById('pwaFloatingInstallBanner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        function closeIosPointer() {
+            const pointer = document.getElementById('iosSafariPointer');
+            if (pointer) pointer.classList.add('hidden');
+        }
+
+        async function checkIsAppInstalled() {
+            if (isRunningStandalone()) return true;
+            if (localStorage.getItem('pwa_installed') === 'true') return true;
+            if ('getInstalledRelatedApps' in navigator) {
+                try {
+                    const relatedApps = await navigator.getInstalledRelatedApps();
+                    if (relatedApps && relatedApps.length > 0) return true;
+                } catch (e) {
+                    // ignore error
+                }
+            }
+            return false;
+        }
+
+        function showAlreadyInstalledModal() {
+            const modal = document.getElementById('pwaInstallModal');
+            if (modal) modal.classList.remove('hidden');
+            const alreadyBox = document.getElementById('pwaAlreadyInstalledBox');
+            const promptBox = document.getElementById('pwaDirectPromptBox');
+            if (alreadyBox) alreadyBox.classList.remove('hidden');
+            if (promptBox) promptBox.classList.add('hidden');
+        }
+
+        async function updateInstallUIState() {
+            const isInstalled = await checkIsAppInstalled();
+            const headerBtn = document.getElementById('headerInstallBtn');
+            const floatingBanner = document.getElementById('pwaFloatingInstallBanner');
+
+            if (isInstalled) {
+                if (headerBtn) {
+                    headerBtn.className = "text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-emerald-400 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95 shrink-0";
+                    headerBtn.onclick = () => showAlreadyInstalledModal();
+                    headerBtn.innerHTML = '<span class="text-sm">✅</span> <span>App Installed</span>';
+                }
+                if (floatingBanner) {
+                    floatingBanner.classList.add('hidden');
+                }
+            } else {
+                if (headerBtn) {
+                    headerBtn.className = "text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-amber-300 shadow-md shadow-amber-500/10 transition cursor-pointer active:scale-95 shrink-0";
+                    headerBtn.onclick = () => handleOneTapInstall();
+                    const btnLabel = deferredPrompt ? "⚡ Instant 1-Tap Install" : "Add to Home Screen";
+                    headerBtn.innerHTML = `<span class="text-sm">📲</span> <span>${btnLabel}</span>`;
+                }
+                if (!bannerDismissed && floatingBanner) {
+                    floatingBanner.classList.remove('hidden');
+                }
+            }
+        }
+
+        // Global 1-Tap Install Function triggered from anywhere in the UI
+        async function handleOneTapInstall() {
+            const isInstalled = await checkIsAppInstalled();
+            if (isInstalled) {
+                showAlreadyInstalledModal();
+                return;
+            }
+
+            // Case 1: In-App Browser (WhatsApp, Instagram, etc)
+            if (isInAppBrowser()) {
+                if (isAndroidDevice()) {
+                    showToast('🚀 Opening in Google Chrome for 1-Tap Installation...', 'info');
+                    openInNativeChrome();
+                } else {
+                    copyAppLink();
+                    showToast('📋 App link copied! Please paste in Safari or Chrome to install.', 'info');
+                }
+                return;
+            }
+
+            // Case 2: Native Chromium browser prompt available (Android Chrome, Desktop Chrome/Edge)
+            if (deferredPrompt) {
+                try {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        localStorage.setItem('pwa_installed', 'true');
+                        showToast('🎉 App added to Home Screen successfully!', 'success');
+                        closeInstallAppModal();
+                        dismissFloatingInstallBanner();
+                    }
+                } catch (err) {
+                    console.error("Install prompt trigger error:", err);
+                }
+                deferredPrompt = null;
+                updateInstallUIState();
+                return;
+            }
+
+            // Case 3: iOS Safari (iPhone / iPad)
+            if (isIosDevice()) {
+                const iosPointer = document.getElementById('iosSafariPointer');
+                if (iosPointer) iosPointer.classList.remove('hidden');
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Shop Ledger & Dues Tracker',
+                            text: 'Install Shop Ledger app to your Home Screen',
+                            url: window.location.href
+                        });
+                    } catch (e) {
+                        // Share modal cancelled or closed
+                    }
+                } else {
+                    openInstallAppModal();
+                }
+                return;
+            }
+
+            // Case 4: Default fallback -> Open detailed guide modal
+            openInstallAppModal();
+        }
+
+        // Alias for modal button
+        async function triggerPWAInstall() {
+            await handleOneTapInstall();
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            const promptBox = document.getElementById('pwaDirectPromptBox');
-            if (promptBox && !isRunningStandalone()) {
-                promptBox.classList.remove('hidden');
-            }
+            updateInstallUIState();
         });
 
         window.addEventListener('appinstalled', () => {
+            localStorage.setItem('pwa_installed', 'true');
             deferredPrompt = null;
             showToast('🎉 Shop Ledger installed on your Home Screen!', 'success');
             closeInstallAppModal();
+            dismissFloatingInstallBanner();
+            updateInstallUIState();
         });
 
-        function openInstallAppModal() {
+        async function openInstallAppModal() {
             const modal = document.getElementById('pwaInstallModal');
             if (modal) modal.classList.remove('hidden');
 
@@ -3475,7 +3664,9 @@
             const iosGuide = document.getElementById('pwaIosGuide');
             const androidGuide = document.getElementById('pwaAndroidGuide');
 
-            if (isRunningStandalone()) {
+            const isInstalled = await checkIsAppInstalled();
+
+            if (isInstalled) {
                 if (alreadyBox) alreadyBox.classList.remove('hidden');
                 if (promptBox) promptBox.classList.add('hidden');
             } else {
@@ -3496,26 +3687,6 @@
         function closeInstallAppModal() {
             const modal = document.getElementById('pwaInstallModal');
             if (modal) modal.classList.add('hidden');
-        }
-
-        async function triggerPWAInstall() {
-            if (deferredPrompt) {
-                try {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        showToast('App added to Home Screen successfully!', 'success');
-                        closeInstallAppModal();
-                    }
-                } catch (err) {
-                    console.error("Install prompt error:", err);
-                }
-                deferredPrompt = null;
-            } else if (isIosDevice()) {
-                showToast('🍏 iPhone/iPad: Tap Safari Share button 📤 -> "Add to Home Screen"', 'info');
-            } else {
-                showToast('🤖 Tap browser Menu (⋮) -> "Add to Home Screen" or "Install App"', 'info');
-            }
         }
 
         if ('serviceWorker' in navigator) {
@@ -3547,6 +3718,7 @@
         });
 
         window.onload = async () => {
+            updateInstallUIState();
             if (isInAppBrowser()) {
                 const warnBanner = document.getElementById('inAppBrowserWarning');
                 if (warnBanner) warnBanner.classList.remove('hidden');
