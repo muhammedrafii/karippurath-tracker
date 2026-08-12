@@ -84,29 +84,44 @@
             </div>
         </header>
 
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-blue-600 flex flex-col justify-between">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Total Outstanding</p>
-                    <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">💰</span>
+        <!-- Summary Cards (Straight horizontal row on mobile: grid-cols-3) -->
+        <div class="grid grid-cols-3 gap-1.5 sm:gap-4 mb-6">
+            <!-- Total Outstanding Card -->
+            <div class="bg-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-blue-600 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                    <p class="text-slate-500 text-[10px] xs:text-xs sm:text-sm font-bold leading-tight truncate" title="Total Outstanding">
+                        <span class="sm:hidden">Total</span>
+                        <span class="hidden sm:inline">Total Outstanding</span>
+                    </p>
+                    <span class="w-5 h-5 sm:w-8 sm:h-8 rounded-md sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] sm:text-sm font-bold shrink-0">💰</span>
                 </div>
-                <h2 id="totalOutstanding" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">₹0</h2>
+                <h2 id="totalOutstanding" class="text-xs xs:text-sm sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-amber-500 flex flex-col justify-between">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Current Due (Upcoming)</p>
-                    <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold shrink-0">📅</span>
+
+            <!-- Current Due Card -->
+            <div class="bg-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-amber-500 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                    <p class="text-slate-500 text-[10px] xs:text-xs sm:text-sm font-bold leading-tight truncate" title="Current Due (Upcoming)">
+                        <span class="sm:hidden">Current</span>
+                        <span class="hidden sm:inline">Current Due</span>
+                    </p>
+                    <span class="w-5 h-5 sm:w-8 sm:h-8 rounded-md sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-[10px] sm:text-sm font-bold shrink-0">📅</span>
                 </div>
-                <h2 id="currentDue" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">₹0</h2>
+                <h2 id="currentDue" class="text-xs xs:text-sm sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
             </div>
+
             <!-- Clickable Overdue Card -->
-            <div onclick="openOverdueModal()" class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/40 transition active:scale-[0.99] flex flex-col justify-between group" title="Click to view overdue companies and bills">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Overdue Amount</p>
-                    <span class="text-[11px] bg-rose-100 text-rose-800 font-bold px-2.5 py-1 rounded-lg border border-rose-200 group-hover:bg-rose-200 transition">View 🔍</span>
+            <div onclick="openOverdueModal()" class="bg-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/40 transition active:scale-[0.98] flex flex-col justify-between group" title="Click to view overdue companies and bills">
+                <div class="flex items-center justify-between gap-1 mb-1">
+                    <p class="text-slate-500 text-[10px] xs:text-xs sm:text-sm font-bold leading-tight truncate" title="Overdue Amount">
+                        Overdue
+                    </p>
+                    <span class="text-[9px] sm:text-[11px] bg-rose-100 text-rose-800 font-extrabold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded sm:rounded-lg border border-rose-200 group-hover:bg-rose-200 transition shrink-0">
+                        <span class="sm:hidden">🔍</span>
+                        <span class="hidden sm:inline">View 🔍</span>
+                    </span>
                 </div>
-                <h2 id="overdueAmount" class="text-2xl sm:text-3xl font-black text-rose-600 tracking-tight">₹0</h2>
+                <h2 id="overdueAmount" class="text-xs xs:text-sm sm:text-2xl lg:text-3xl font-black text-rose-600 tracking-tight truncate">₹0</h2>
             </div>
         </div>
 
@@ -425,41 +440,85 @@
                 <button onclick="closeModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
 
-            <!-- Action Tabs / Forms Grid in Modal -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <!-- Record Payment Section -->
-                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <h4 class="font-bold text-xs text-blue-900 mb-2">💸 Record Payment (FIFO Settlement)</h4>
-                    <form id="generalPaymentForm" onsubmit="makeCompanyPayment(event, 'Payment')" class="space-y-2">
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="gen_pay_amt" step="any" min="0.01" placeholder="Amount (₹)" required class="p-2 border rounded text-xs bg-white">
-                            <input type="date" id="gen_pay_date" required class="p-2 border rounded text-xs bg-white">
+            <!-- Action Tabs / Mobile Icon Triggers Grid & Forms Container -->
+            <div class="mb-4 space-y-3">
+                <!-- Mobile Action Icons Grid (< md) -->
+                <div class="grid grid-cols-2 gap-2.5 md:hidden">
+                    <button type="button" onclick="toggleMobileActionForm('payment')" id="mobilePaymentTriggerBtn" class="bg-blue-50 hover:bg-blue-100/90 active:scale-95 p-3 rounded-2xl border border-blue-200 text-left transition flex flex-col justify-between gap-1 shadow-2xs cursor-pointer">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                                💸
+                            </div>
+                            <span id="paymentToggleBadge" class="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">➕ Open</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="gen_pay_mode" class="p-2 border rounded text-xs bg-white">
-                                <option value="NEFT">NEFT</option>
-                                <option value="GPay">GPay</option>
-                                <option value="RTGS">RTGS</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Cheque">Cheque</option>
-                            </select>
-                            <input type="text" id="gen_pay_remark" placeholder="Remark / Txn ID" class="p-2 border rounded text-xs bg-white">
+                        <div class="mt-1">
+                            <h4 class="font-black text-xs text-blue-950">Record Payment</h4>
+                            <p class="text-[10px] text-blue-700/80 font-medium">FIFO Settlement</p>
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded text-xs font-bold hover:bg-blue-700 transition">Apply Payment</button>
-                    </form>
+                    </button>
+
+                    <button type="button" onclick="toggleMobileActionForm('discount')" id="mobileDiscountTriggerBtn" class="bg-purple-50 hover:bg-purple-100/90 active:scale-95 p-3 rounded-2xl border border-purple-200 text-left transition flex flex-col justify-between gap-1 shadow-2xs cursor-pointer">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                                🎁
+                            </div>
+                            <span id="discountToggleBadge" class="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">➕ Open</span>
+                        </div>
+                        <div class="mt-1">
+                            <h4 class="font-black text-xs text-purple-950">Record Discount</h4>
+                            <p class="text-[10px] text-purple-700/80 font-medium">Credit Note / Scheme</p>
+                        </div>
+                    </button>
                 </div>
 
-                <!-- Record Credit Note / Discount Section -->
-                <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                    <h4 class="font-bold text-xs text-purple-900 mb-2">🎁 Record Company Discount / Credit Note</h4>
-                    <form id="discountForm" onsubmit="makeCompanyPayment(event, 'Credit Note / Discount')" class="space-y-2">
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="disc_amt" step="any" min="0.01" placeholder="Discount Amount (₹)" required class="p-2 border rounded text-xs bg-white">
-                            <input type="date" id="disc_date" required class="p-2 border rounded text-xs bg-white">
+                <!-- Desktop Grid & Mobile Expanded Forms Container -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Record Payment Section -->
+                    <div id="paymentFormSection" class="hidden md:block bg-blue-50/90 p-3.5 rounded-2xl border border-blue-200/80 shadow-2xs">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-extrabold text-xs sm:text-sm text-blue-950 flex items-center gap-1.5">
+                                <span>💸</span>
+                                <span>Record Payment (FIFO Settlement)</span>
+                            </h4>
+                            <button type="button" onclick="toggleMobileActionForm('payment')" class="md:hidden text-slate-400 hover:text-slate-600 font-bold text-xs p-1">✕ Close</button>
                         </div>
-                        <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-2 border rounded text-xs bg-white">
-                        <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded text-xs font-bold hover:bg-purple-700 transition">Apply Credit Note / Discount</button>
-                    </form>
+                        <form id="generalPaymentForm" onsubmit="makeCompanyPayment(event, 'Payment')" class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="gen_pay_amt" step="any" min="0.01" placeholder="Amount (₹)" required class="p-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                                <input type="date" id="gen_pay_date" required class="p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="gen_pay_mode" class="p-2 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="NEFT">NEFT</option>
+                                    <option value="GPay">GPay</option>
+                                    <option value="RTGS">RTGS</option>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Cheque">Cheque</option>
+                                </select>
+                                <input type="text" id="gen_pay_remark" placeholder="Remark / Txn ID" class="p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-xl text-xs font-extrabold shadow-xs transition cursor-pointer active:scale-95">Apply Payment</button>
+                        </form>
+                    </div>
+
+                    <!-- Record Credit Note / Discount Section -->
+                    <div id="discountFormSection" class="hidden md:block bg-purple-50/90 p-3.5 rounded-2xl border border-purple-200/80 shadow-2xs">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-extrabold text-xs sm:text-sm text-purple-950 flex items-center gap-1.5">
+                                <span>🎁</span>
+                                <span>Record Company Discount / Credit Note</span>
+                            </h4>
+                            <button type="button" onclick="toggleMobileActionForm('discount')" class="md:hidden text-slate-400 hover:text-slate-600 font-bold text-xs p-1">✕ Close</button>
+                        </div>
+                        <form id="discountForm" onsubmit="makeCompanyPayment(event, 'Credit Note / Discount')" class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="disc_amt" step="any" min="0.01" placeholder="Discount Amount (₹)" required class="p-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold focus:ring-2 focus:ring-purple-500 outline-none">
+                                <input type="date" id="disc_date" required class="p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <input type="text" id="disc_remark" placeholder="Reason / Scheme / Credit Note No" required class="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-xl text-xs font-extrabold shadow-xs transition cursor-pointer active:scale-95">Apply Credit Note / Discount</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -1807,8 +1866,79 @@
             document.getElementById('disc_date').value = today;
             if (document.getElementById('modalBillSearchInput')) document.getElementById('modalBillSearchInput').value = '';
             if (document.getElementById('modalBillStatusFilter')) document.getElementById('modalBillStatusFilter').value = 'ALL';
+
+            // Reset mobile action forms to collapsed state when modal opens
+            if (window.innerWidth < 768) {
+                const paySec = document.getElementById('paymentFormSection');
+                const discSec = document.getElementById('discountFormSection');
+                const payBadge = document.getElementById('paymentToggleBadge');
+                const discBadge = document.getElementById('discountToggleBadge');
+                if (paySec) paySec.classList.add('hidden');
+                if (discSec) discSec.classList.add('hidden');
+                if (payBadge) {
+                    payBadge.innerText = '➕ Open';
+                    payBadge.className = 'text-[10px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200';
+                }
+                if (discBadge) {
+                    discBadge.innerText = '➕ Open';
+                    discBadge.className = 'text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200';
+                }
+            }
+
             renderModalBills(companyName);
             document.getElementById('billModal').classList.remove('hidden');
+        }
+
+        function toggleMobileActionForm(type) {
+            if (window.innerWidth >= 768) return;
+
+            if (type === 'payment') {
+                const sec = document.getElementById('paymentFormSection');
+                const badge = document.getElementById('paymentToggleBadge');
+                if (sec) {
+                    const isHidden = sec.classList.contains('hidden');
+                    if (isHidden) {
+                        sec.classList.remove('hidden');
+                        if (badge) {
+                            badge.innerText = '➖ Close';
+                            badge.className = 'text-[10px] font-extrabold text-blue-900 bg-blue-200 px-2 py-0.5 rounded-md border border-blue-300';
+                        }
+                        setTimeout(() => {
+                            const amtInput = document.getElementById('gen_pay_amt');
+                            if (amtInput) amtInput.focus();
+                        }, 50);
+                    } else {
+                        sec.classList.add('hidden');
+                        if (badge) {
+                            badge.innerText = '➕ Open';
+                            badge.className = 'text-[10px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200';
+                        }
+                    }
+                }
+            } else if (type === 'discount') {
+                const sec = document.getElementById('discountFormSection');
+                const badge = document.getElementById('discountToggleBadge');
+                if (sec) {
+                    const isHidden = sec.classList.contains('hidden');
+                    if (isHidden) {
+                        sec.classList.remove('hidden');
+                        if (badge) {
+                            badge.innerText = '➖ Close';
+                            badge.className = 'text-[10px] font-extrabold text-purple-900 bg-purple-200 px-2 py-0.5 rounded-md border border-purple-300';
+                        }
+                        setTimeout(() => {
+                            const amtInput = document.getElementById('disc_amt');
+                            if (amtInput) amtInput.focus();
+                        }, 50);
+                    } else {
+                        sec.classList.add('hidden');
+                        if (badge) {
+                            badge.innerText = '➕ Open';
+                            badge.className = 'text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200';
+                        }
+                    }
+                }
+            }
         }
 
         function closeModal() {
