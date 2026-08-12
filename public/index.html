@@ -85,90 +85,121 @@
         </header>
 
         <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-                <p class="text-gray-500 text-sm">Total Outstanding</p>
-                <h2 id="totalOutstanding" class="text-3xl font-bold text-gray-800">₹0</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-blue-600 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Total Outstanding</p>
+                    <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">💰</span>
+                </div>
+                <h2 id="totalOutstanding" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">₹0</h2>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
-                <p class="text-gray-500 text-sm">Current Due (Upcoming)</p>
-                <h2 id="currentDue" class="text-3xl font-bold text-gray-800">₹0</h2>
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-amber-500 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Current Due (Upcoming)</p>
+                    <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold shrink-0">📅</span>
+                </div>
+                <h2 id="currentDue" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">₹0</h2>
             </div>
             <!-- Clickable Overdue Card -->
-            <div onclick="openOverdueModal()" class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 cursor-pointer hover:bg-red-50 transition transform hover:-translate-y-0.5" title="Click to view overdue companies and bills">
-                <p class="text-gray-500 text-sm flex justify-between items-center">
-                    Overdue Amount 
-                    <span class="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">Click to View 🔍</span>
-                </p>
-                <h2 id="overdueAmount" class="text-3xl font-bold text-red-600">₹0</h2>
+            <div onclick="openOverdueModal()" class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/40 transition active:scale-[0.99] flex flex-col justify-between group" title="Click to view overdue companies and bills">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <p class="text-slate-500 text-xs sm:text-sm font-semibold">Overdue Amount</p>
+                    <span class="text-[11px] bg-rose-100 text-rose-800 font-bold px-2.5 py-1 rounded-lg border border-rose-200 group-hover:bg-rose-200 transition">View 🔍</span>
+                </div>
+                <h2 id="overdueAmount" class="text-2xl sm:text-3xl font-black text-rose-600 tracking-tight">₹0</h2>
             </div>
         </div>
 
         <!-- Action Forms Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 mb-6">
             <!-- Add Company Form -->
-            <div class="bg-white p-5 rounded-lg shadow">
-                <h3 class="font-bold text-lg mb-3 text-blue-700">➕ Add Distributor & Book Outstanding</h3>
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90">
+                <h3 class="font-extrabold text-base sm:text-lg mb-3 text-blue-900 flex items-center gap-2">
+                    <span>➕ Add Distributor & Book Outstanding</span>
+                </h3>
                 <form id="companyForm" onsubmit="addCompany(event)" class="space-y-3">
-                    <input type="text" id="compName" placeholder="Company Name (e.g. Ashirvad)" required class="w-full p-2 border rounded">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="compCredit" placeholder="Credit Days (0, 15, 30)" min="0" required class="p-2 border rounded">
-                        <input type="number" id="openingBalance" placeholder="Total Outstanding from Book (₹)" min="0" required class="p-2 border rounded bg-yellow-50">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Distributor / Company Name *</label>
+                        <input type="text" id="compName" placeholder="Company Name (e.g. Ashirvad Pipes)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="bankName" placeholder="Bank Name (Optional)" class="p-2 border rounded">
-                        <input type="text" id="accountNo" placeholder="Account No (Optional)" class="p-2 border rounded">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Credit Terms (Days) *</label>
+                            <input type="number" id="compCredit" placeholder="Credit Days (e.g. 30)" min="0" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Book Outstanding Balance (₹) *</label>
+                            <input type="number" id="openingBalance" placeholder="Outstanding (₹)" min="0" required class="w-full p-2.5 border border-amber-300/80 rounded-xl text-xs sm:text-sm bg-amber-50/60 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition font-semibold">
+                        </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="ifsc" placeholder="IFSC Code (Optional)" class="p-2 border rounded">
-                        <input type="text" id="upi" placeholder="UPI ID (Optional)" class="p-2 border rounded">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Bank Name (Optional)</label>
+                            <input type="text" id="bankName" placeholder="Bank Name" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Account No (Optional)</label>
+                            <input type="text" id="accountNo" placeholder="Account Number" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-bold">Save Company Profile & Opening Balance</button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">IFSC Code (Optional)</label>
+                            <input type="text" id="ifsc" placeholder="IFSC Code" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">UPI ID (Optional)</label>
+                            <input type="text" id="upi" placeholder="UPI ID (e.g. shop@upi)" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-[0.98] mt-1">
+                        Save Company Profile & Opening Balance
+                    </button>
                 </form>
             </div>
 
             <!-- Add Bill Form -->
-            <div class="bg-white p-5 rounded-lg shadow relative">
-                <h3 class="font-bold text-lg mb-3 text-blue-700 flex items-center justify-between">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 relative">
+                <h3 class="font-extrabold text-base sm:text-lg mb-3 text-blue-900 flex items-center justify-between">
                     <span>📄 Enter New / Last Bill</span>
                 </h3>
                 <form id="billForm" onsubmit="addBill(event)" class="space-y-3">
                     <div id="billDistributorSearchContainer" class="relative space-y-1">
-                        <label class="block text-xs font-bold text-gray-700">Distributor / Supplier *</label>
+                        <label class="block text-xs font-bold text-slate-700">Distributor / Supplier *</label>
                         <!-- Quick Search Filter Box -->
                         <div class="relative">
-                            <input type="text" id="billDistributorSearch" oninput="onBillDistributorSearchInput(this.value)" onfocus="openBillCompanyDropdown()" placeholder="Search distributor by name..." autocomplete="off" class="w-full pl-8 pr-7 py-2 border rounded-lg text-xs bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                            <span class="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
-                            <button type="button" onclick="clearBillDistributorSearch()" id="clearDistributorSearchBtn" class="hidden absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-700 text-xs font-bold">✕</button>
+                            <input type="text" id="billDistributorSearch" oninput="onBillDistributorSearchInput(this.value)" onfocus="openBillCompanyDropdown()" placeholder="Search distributor by name..." autocomplete="off" class="w-full pl-8 pr-7 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                            <span class="absolute left-2.5 top-3 text-slate-400 text-xs">🔍</span>
+                            <button type="button" onclick="clearBillDistributorSearch()" id="clearDistributorSearchBtn" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold p-1">✕</button>
                         </div>
 
                         <!-- Dropdown list overlay on typing search -->
-                        <div id="billCompanyDropdownList" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-lg shadow-xl z-30 max-h-48 overflow-y-auto"></div>
+                        <div id="billCompanyDropdownList" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto"></div>
 
                         <!-- Distributor Select Dropdown -->
-                        <select id="billCompanySelect" onchange="syncBillCompanySelectToSearch()" required class="w-full p-2 border rounded-lg bg-white text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                        <select id="billCompanySelect" onchange="syncBillCompanySelectToSearch()" required class="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition">
                             <option value="">-- Select Distributor --</option>
                         </select>
-                        <div id="billDistributorSearchCount" class="text-[11px] text-gray-500 hidden mt-1"></div>
+                        <div id="billDistributorSearchCount" class="text-[11px] text-slate-500 hidden mt-1"></div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Bill Number *</label>
-                        <input type="text" id="billNo" placeholder="Bill Number (#INV-102)" required class="w-full p-2 border rounded-lg text-xs">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Bill Number *</label>
+                        <input type="text" id="billNo" placeholder="Bill Number (#INV-102)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Bill Date *</label>
-                            <input type="date" id="billDate" required class="w-full p-2 border rounded-lg text-xs">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Bill Date *</label>
+                            <input type="date" id="billDate" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Total Amount (₹) *</label>
-                            <input type="number" id="billAmount" step="any" min="0.01" placeholder="Amount (₹)" required class="w-full p-2 border rounded-lg text-xs">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Total Amount (₹) *</label>
+                            <input type="number" id="billAmount" step="any" min="0.01" placeholder="Amount (₹)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition font-semibold">
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-green-600 text-white p-2.5 rounded-lg hover:bg-green-700 font-bold text-xs shadow-xs transition">
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-[0.98] mt-1">
                         Save Bill & Set Due Date
                     </button>
                 </form>
@@ -176,46 +207,50 @@
         </div>
 
         <!-- Companies Summary Table -->
-        <div class="bg-white p-5 rounded-lg shadow mb-6">
-            <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
+        <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                 <div>
-                    <h3 class="font-bold text-lg text-gray-800">🏢 Distributors Summary</h3>
-                    <p class="text-xs text-gray-500">Click on any company row to view sorted overdue/oldest bills, make payments, apply discounts, and search ledgers.</p>
+                    <h3 class="font-extrabold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+                        <span>🏢 Distributors Summary</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Click on any distributor row to view overdue bills, record payments, apply discounts, and download PDF ledgers.</p>
                 </div>
             </div>
 
             <!-- Distributor Search & Filter Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <div class="relative flex-1 min-w-[220px]">
-                    <input type="text" id="companySearchInput" oninput="renderCompaniesTable()" placeholder=" Search distributor by name, bank, account, or UPI..." class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                    <span class="absolute left-3 top-2.5 text-gray-400 text-sm">🔍</span>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                <div class="relative flex-1 min-w-[200px]">
+                    <input type="text" id="companySearchInput" oninput="renderCompaniesTable()" placeholder="Search by name, bank, account, or UPI..." class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <span class="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-xs font-bold text-gray-600 whitespace-nowrap">Filter Status:</label>
-                    <select id="companyStatusFilter" onchange="renderCompaniesTable()" class="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-                        <option value="ALL">All Distributors</option>
-                        <option value="OUTSTANDING">With Outstanding (> ₹0)</option>
-                        <option value="OVERDUE">With Overdue Bills ⚠️</option>
-                        <option value="SETTLED">Fully Settled (₹0)</option>
-                    </select>
-                </div>
-                <div id="companyCountBadge" class="text-xs font-bold text-gray-600 bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200">
-                    0 Companies
+                <div class="flex items-center gap-2 justify-between sm:justify-start">
+                    <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                        <label class="text-xs font-bold text-slate-600 whitespace-nowrap">Status:</label>
+                        <select id="companyStatusFilter" onchange="renderCompaniesTable()" class="p-2 border border-slate-200 rounded-xl text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-auto">
+                            <option value="ALL">All Distributors</option>
+                            <option value="OUTSTANDING">With Outstanding (> ₹0)</option>
+                            <option value="OVERDUE">With Overdue Bills ⚠️</option>
+                            <option value="SETTLED">Fully Settled (₹0)</option>
+                        </select>
+                    </div>
+                    <div id="companyCountBadge" class="text-xs font-bold text-blue-900 bg-blue-100/80 px-3 py-1.5 rounded-xl border border-blue-200 whitespace-nowrap">
+                        0 Companies
+                    </div>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto rounded-xl border border-slate-200/80 shadow-2xs">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-200 text-gray-700 text-sm">
-                            <th class="p-2">Company Name</th>
-                            <th class="p-2">Credit Terms</th>
-                            <th class="p-2">Total Outstanding</th>
-                            <th class="p-2">Bank Details</th>
-                            <th class="p-2">Action</th>
+                        <tr class="bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border-b border-slate-200">
+                            <th class="p-3">Company Name</th>
+                            <th class="p-3">Credit Terms</th>
+                            <th class="p-3">Total Outstanding</th>
+                            <th class="p-3">Bank Details</th>
+                            <th class="p-3 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="companiesTableBody" class="text-sm"></tbody>
+                    <tbody id="companiesTableBody" class="text-xs sm:text-sm"></tbody>
                 </table>
             </div>
         </div>
@@ -1553,29 +1588,31 @@
                 const overdueAmt = companyOverdueMap[comp.name] || 0;
                 const hasOverdue = overdueAmt > 0;
                 const tr = document.createElement('tr');
-                tr.className = `border-b hover:bg-blue-50 cursor-pointer transition ${hasOverdue ? 'bg-red-50/40' : ''}`;
+                tr.className = `border-b border-slate-200/80 hover:bg-blue-50/60 cursor-pointer transition ${hasOverdue ? 'bg-rose-50/40' : ''}`;
                 tr.onclick = (e) => {
                     if (!e.target.closest('button')) {
                         openModal(comp.name);
                     }
                 };
                 tr.innerHTML = `
-                    <td class="p-2 font-bold text-blue-900">
+                    <td class="p-3 font-extrabold text-blue-900">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span>${comp.name}</span>
-                            ${hasOverdue ? `<span class="bg-red-100 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
+                            <span class="text-xs sm:text-sm">${comp.name}</span>
+                            ${hasOverdue ? `<span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-lg font-bold border border-rose-200">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
                         </div>
                     </td>
-                    <td class="p-2">${comp.creditDays} Days</td>
-                    <td class="p-2 font-bold ${comp.outstanding > 0 ? 'text-red-600' : 'text-green-600'}">₹${(comp.outstanding || 0).toLocaleString('en-IN')}</td>
-                    <td class="p-2 text-xs text-gray-600">
-                        <div>${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
-                        <div>IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
+                    <td class="p-3 text-xs sm:text-sm font-semibold text-slate-700">${comp.creditDays} Days</td>
+                    <td class="p-3 font-extrabold text-xs sm:text-sm ${comp.outstanding > 0 ? 'text-rose-600' : 'text-emerald-600'}">₹${(comp.outstanding || 0).toLocaleString('en-IN')}</td>
+                    <td class="p-3 text-[11px] sm:text-xs text-slate-600">
+                        <div class="font-medium">${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
+                        <div class="text-slate-400">IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
                     </td>
-                    <td class="p-2 flex gap-1 items-center flex-wrap">
-                        <button onclick="openModal('${comp.name}')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 font-bold">View Bills</button>
-                        <button onclick="openEditCompany('${comp.id}', event)" class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-300 font-bold">✏️ Edit</button>
-                        <button onclick="deleteCompany('${comp.id}', event)" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded hover:bg-red-200 font-bold">🗑️ Delete</button>
+                    <td class="p-3 text-right">
+                        <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow-xs transition cursor-pointer active:scale-95">View Bills</button>
+                            <button onclick="openEditCompany('${comp.id}', event)" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg font-bold border border-slate-200 transition cursor-pointer active:scale-95">✏️ Edit</button>
+                            <button onclick="deleteCompany('${comp.id}', event)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-2.5 py-1.5 rounded-lg font-bold border border-rose-200 transition cursor-pointer active:scale-95">🗑️ Delete</button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
