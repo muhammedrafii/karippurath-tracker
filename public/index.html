@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shop Ledger & Dues Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -204,8 +206,13 @@
     <!-- Company Details & Bills Modal -->
     <div id="billModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-40 overflow-y-auto">
         <div class="bg-white rounded-xl max-w-5xl w-full p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-200">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 id="modalTitle" class="font-bold text-lg sm:text-xl text-blue-700">Company Bills & Payments</h3>
+            <div class="flex flex-wrap justify-between items-center mb-4 border-b pb-3 gap-2">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <h3 id="modalTitle" class="font-bold text-lg sm:text-xl text-blue-700">Company Bills & Payments</h3>
+                    <button onclick="downloadCompanyLedgerPDF(activeModalCompany)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs cursor-pointer">
+                        📄 Download PDF Ledger
+                    </button>
+                </div>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-black font-bold text-xl p-1">✕</button>
             </div>
 
@@ -1466,7 +1473,7 @@
                         <div>${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
                         <div>IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
                     </td>
-                    <td class="p-2 flex gap-1 items-center">
+                    <td class="p-2 flex gap-1 items-center flex-wrap">
                         <button onclick="openModal('${comp.name}')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 font-bold">View Bills</button>
                         <button onclick="openEditCompany('${comp.id}', event)" class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-300 font-bold">✏️ Edit</button>
                         <button onclick="deleteCompany('${comp.id}', event)" class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded hover:bg-red-200 font-bold">🗑️ Delete</button>
@@ -2452,6 +2459,350 @@
                     }
                 }
             );
+        }
+
+        // --- 📄 PDF Ledger Download & Statement Generator ---
+        async function downloadCompanyLedgerPDF(companyName) {
+            if (!companyName) {
+                showToast('Please select a distributor to download ledger.', 'error');
+                return;
+            }
+
+            const comp = (allData.companies || []).find(c => c.name === companyName) || { name: companyName };
+            const bills = (allData.bills || []).filter(b => b.companyName === companyName) || [];
+            const payments = (allData.payments || []).filter(p => p.companyName === companyName) || [];
+
+            const shopInfo = JSON.parse(localStorage.getItem('shop_info') || '{}');
+            const shopName = shopInfo.shopName || document.getElementById('headerShopName')?.innerText || 'Shop Dues & Ledger';
+            const ownerName = shopInfo.ownerName || '';
+            const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            // Calculate totals
+            const totalBillAmt = bills.reduce((sum, b) => sum + (parseFloat(b.totalAmount) || 0), 0);
+            const totalPaidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+            const totalOutstanding = parseFloat(comp.outstanding) !== undefined && !isNaN(parseFloat(comp.outstanding))
+                ? parseFloat(comp.outstanding) 
+                : (totalBillAmt - totalPaidAmt);
+
+            // If jsPDF is available
+            if (window.jspdf && window.jspdf.jsPDF) {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+                    // Header banner
+                    doc.setFillColor(30, 58, 138); // Deep Navy
+                    doc.rect(0, 0, 210, 28, 'F');
+
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(shopName.toUpperCase(), 14, 12);
+
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('DISTRIBUTOR LEDGER & PAYMENT STATEMENT', 14, 18);
+
+                    doc.setFontSize(8);
+                    doc.text(`Generated Date: ${todayStr}`, 196, 18, { align: 'right' });
+
+                    // Distributor info box
+                    doc.setFillColor(241, 245, 249);
+                    doc.roundedRect(14, 33, 182, 34, 2, 2, 'F');
+
+                    doc.setTextColor(30, 58, 138);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`Distributor: ${comp.name || companyName}`, 18, 41);
+
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFontSize(8.5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Credit Days: ${comp.creditDays !== undefined ? comp.creditDays + ' Days' : 'N/A'}`, 18, 47);
+                    doc.text(`Bank Details: ${comp.bankName || '-'}  |  A/C: ${comp.accountNo || '-'}`, 18, 53);
+                    doc.text(`IFSC Code: ${comp.ifsc || '-'}  |  UPI ID: ${comp.upi || '-'}`, 18, 59);
+
+                    // Summary values on right
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8.5);
+                    doc.text(`Total Billed: Rs. ${totalBillAmt.toLocaleString('en-IN')}`, 128, 41);
+                    doc.text(`Total Payments/Credits: Rs. ${totalPaidAmt.toLocaleString('en-IN')}`, 128, 47);
+
+                    doc.setTextColor(220, 38, 38); // Red
+                    doc.setFontSize(9.5);
+                    doc.text(`Outstanding Due: Rs. ${totalOutstanding.toLocaleString('en-IN')}`, 128, 55);
+
+                    let startY = 73;
+
+                    // 1. Bills Table
+                    doc.setTextColor(30, 58, 138);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('1. Purchase Bills History', 14, startY);
+
+                    const billRows = bills.map((b, i) => [
+                        i + 1,
+                        b.billNo || '-',
+                        b.date || '-',
+                        b.dueDate || '-',
+                        b.status || 'Unpaid',
+                        `Rs. ${(parseFloat(b.totalAmount) || 0).toLocaleString('en-IN')}`,
+                        `Rs. ${(parseFloat(b.paidAmount) || 0).toLocaleString('en-IN')}`,
+                        `Rs. ${(parseFloat(b.balanceDue) || 0).toLocaleString('en-IN')}`
+                    ]);
+
+                    if (billRows.length === 0) {
+                        billRows.push(['-', 'No bills recorded', '-', '-', '-', 'Rs. 0', 'Rs. 0', 'Rs. 0']);
+                    }
+
+                    if (typeof doc.autoTable === 'function') {
+                        doc.autoTable({
+                            startY: startY + 3,
+                            head: [['#', 'Bill No', 'Bill Date', 'Due Date', 'Status', 'Total Amount', 'Paid Amount', 'Balance Due']],
+                            body: billRows,
+                            theme: 'striped',
+                            headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+                            bodyStyles: { fontSize: 8 },
+                            columnStyles: {
+                                0: { cellWidth: 8 },
+                                1: { cellWidth: 30 },
+                                2: { cellWidth: 22 },
+                                3: { cellWidth: 22 },
+                                4: { cellWidth: 20 },
+                                5: { halign: 'right' },
+                                6: { halign: 'right' },
+                                7: { halign: 'right', fontStyle: 'bold' }
+                            },
+                            foot: [[
+                                '', 'TOTALS', '', '', '',
+                                `Rs. ${totalBillAmt.toLocaleString('en-IN')}`,
+                                `Rs. ${bills.reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0).toLocaleString('en-IN')}`,
+                                `Rs. ${bills.reduce((s, b) => s + (parseFloat(b.balanceDue) || 0), 0).toLocaleString('en-IN')}`
+                            ]],
+                            footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold' }
+                        });
+                        startY = doc.lastAutoTable.finalY + 9;
+                    }
+
+                    // 2. Payments Table
+                    if (startY > 230) {
+                        doc.addPage();
+                        startY = 20;
+                    }
+
+                    doc.setTextColor(30, 58, 138);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('2. Payments & Credit Notes History', 14, startY);
+
+                    const paymentRows = payments.map((p, i) => [
+                        i + 1,
+                        p.date || '-',
+                        p.billNo || 'ADVANCE',
+                        p.mode || 'Payment',
+                        p.remark || '-',
+                        `Rs. ${(parseFloat(p.amount) || 0).toLocaleString('en-IN')}`
+                    ]);
+
+                    if (paymentRows.length === 0) {
+                        paymentRows.push(['-', '-', '-', '-', 'No payments or discounts recorded', 'Rs. 0']);
+                    }
+
+                    if (typeof doc.autoTable === 'function') {
+                        doc.autoTable({
+                            startY: startY + 3,
+                            head: [['#', 'Date', 'Bill Ref', 'Mode / Type', 'Remark', 'Amount']],
+                            body: paymentRows,
+                            theme: 'striped',
+                            headStyles: { fillColor: [124, 58, 237], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+                            bodyStyles: { fontSize: 8 },
+                            columnStyles: {
+                                0: { cellWidth: 8 },
+                                1: { cellWidth: 24 },
+                                2: { cellWidth: 32 },
+                                3: { cellWidth: 28 },
+                                4: { cellWidth: 54 },
+                                5: { halign: 'right', fontStyle: 'bold' }
+                            },
+                            foot: [[
+                                '', 'TOTAL PAYMENTS / CREDITS', '', '', '',
+                                `Rs. ${totalPaidAmt.toLocaleString('en-IN')}`
+                            ]],
+                            footStyles: { fillColor: [237, 233, 254], textColor: [88, 28, 135], fontSize: 8, fontStyle: 'bold' }
+                        });
+                        startY = doc.lastAutoTable.finalY + 10;
+                    }
+
+                    // Footer notes
+                    if (startY > 255) {
+                        doc.addPage();
+                        startY = 20;
+                    }
+
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 116, 139);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('This is a computer-generated ledger statement issued by ' + shopName + '.', 14, startY);
+                    if (ownerName) {
+                        doc.text(`Authorized Signatory: ${ownerName}`, 196, startY, { align: 'right' });
+                    }
+
+                    const cleanName = companyName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+                    doc.save(`${cleanName}_Ledger_Statement.pdf`);
+                    showToast(`Downloaded PDF ledger for ${companyName}!`, 'success');
+                    return;
+                } catch (pdfErr) {
+                    console.error("PDF generation error:", pdfErr);
+                }
+            }
+
+            // Fallback print view
+            printCompanyLedger(companyName);
+        }
+
+        function printCompanyLedger(companyName) {
+            if (!companyName) return;
+            const comp = (allData.companies || []).find(c => c.name === companyName) || { name: companyName };
+            const bills = (allData.bills || []).filter(b => b.companyName === companyName) || [];
+            const payments = (allData.payments || []).filter(p => p.companyName === companyName) || [];
+
+            const shopInfo = JSON.parse(localStorage.getItem('shop_info') || '{}');
+            const shopName = shopInfo.shopName || document.getElementById('headerShopName')?.innerText || 'Shop Dues & Ledger';
+            const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            const totalBillAmt = bills.reduce((sum, b) => sum + (parseFloat(b.totalAmount) || 0), 0);
+            const totalPaidAmt = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+            const totalOutstanding = parseFloat(comp.outstanding) || (totalBillAmt - totalPaidAmt);
+
+            const printWin = window.open('', '_blank', 'width=900,height=800');
+            if (!printWin) {
+                showToast('Please allow popups to view or print ledger.', 'error');
+                return;
+            }
+
+            const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${companyName} - Ledger Statement</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; color: #1e293b; max-width: 850px; margin: 0 auto; }
+                    .header { background: #1e3a8a; color: white; padding: 18px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+                    .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+                    .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; }
+                    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                    .info-box h3 { margin: 0 0 8px 0; color: #1e3a8a; font-size: 15px; }
+                    .info-box p { margin: 4px 0; font-size: 12px; color: #475569; }
+                    .stat-box { text-align: right; }
+                    .stat-box .outstanding { font-size: 15px; font-weight: bold; color: #dc2626; margin-top: 8px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+                    th { background: #1e3a8a; color: white; text-align: left; padding: 8px 10px; }
+                    th.purp { background: #6d28d9; }
+                    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+                    tr:nth-child(even) { background: #f8fafc; }
+                    .text-right { text-align: right; }
+                    .bold { font-weight: bold; }
+                    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+                    <button onclick="window.print()" style="background: #1e3a8a; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">🖨️ Print / Save as PDF</button>
+                    <button onclick="window.close()" style="background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">Close</button>
+                </div>
+                <div class="header">
+                    <div>
+                        <h1>${shopName}</h1>
+                        <p>DISTRIBUTOR LEDGER STATEMENT</p>
+                    </div>
+                    <div style="text-align: right; font-size: 12px;">
+                        <div>Date: ${todayStr}</div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-box">
+                        <h3>Distributor: ${comp.name || companyName}</h3>
+                        <p><strong>Credit Terms:</strong> ${comp.creditDays !== undefined ? comp.creditDays + ' Days' : 'N/A'}</p>
+                        <p><strong>Bank:</strong> ${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</p>
+                        <p><strong>IFSC:</strong> ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</p>
+                    </div>
+                    <div class="info-box stat-box">
+                        <p><strong>Total Billed:</strong> ₹${totalBillAmt.toLocaleString('en-IN')}</p>
+                        <p><strong>Total Paid/Discounts:</strong> ₹${totalPaidAmt.toLocaleString('en-IN')}</p>
+                        <div class="outstanding">Outstanding Balance: ₹${totalOutstanding.toLocaleString('en-IN')}</div>
+                    </div>
+                </div>
+
+                <h3 style="color: #1e3a8a; margin-top: 20px; font-size: 14px;">1. Purchase Bills History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Bill No</th>
+                            <th>Bill Date</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th class="text-right">Total (₹)</th>
+                            <th class="text-right">Paid (₹)</th>
+                            <th class="text-right">Balance (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bills.length === 0 ? '<tr><td colspan="8" style="text-align:center;">No bills recorded</td></tr>' : bills.map((b, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td><strong>${b.billNo || '-'}</strong></td>
+                                <td>${b.date || '-'}</td>
+                                <td>${b.dueDate || '-'}</td>
+                                <td>${b.status || 'Unpaid'}</td>
+                                <td class="text-right">₹${(parseFloat(b.totalAmount) || 0).toLocaleString('en-IN')}</td>
+                                <td class="text-right">₹${(parseFloat(b.paidAmount) || 0).toLocaleString('en-IN')}</td>
+                                <td class="text-right bold">₹${(parseFloat(b.balanceDue) || 0).toLocaleString('en-IN')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <h3 style="color: #6d28d9; margin-top: 20px; font-size: 14px;">2. Payments & Credit Notes History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="purp">#</th>
+                            <th class="purp">Date</th>
+                            <th class="purp">Bill Reference</th>
+                            <th class="purp">Mode / Type</th>
+                            <th class="purp">Remark</th>
+                            <th class="purp text-right">Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${payments.length === 0 ? '<tr><td colspan="6" style="text-align:center;">No payments recorded</td></tr>' : payments.map((p, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${p.date || '-'}</td>
+                                <td><strong>${p.billNo || 'ADVANCE'}</strong></td>
+                                <td>${p.mode || 'Payment'}</td>
+                                <td>${p.remark || '-'}</td>
+                                <td class="text-right bold">₹${(parseFloat(p.amount) || 0).toLocaleString('en-IN')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    This is a computer-generated ledger statement for ${comp.name || companyName}. Issued by ${shopName}.
+                </div>
+            </body>
+            </html>
+            `;
+
+            printWin.document.write(html);
+            printWin.document.close();
         }
 
         document.addEventListener('click', (e) => {
