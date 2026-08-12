@@ -1750,10 +1750,23 @@
                         <div class="text-slate-400">IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
                     </td>
                     <td class="p-3 text-right">
-                        <div class="flex items-center justify-end gap-1.5 flex-wrap">
-                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow-xs transition cursor-pointer active:scale-95">View Bills</button>
-                            <button onclick="openEditCompany('${comp.id}', event)" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg font-bold border border-slate-200 transition cursor-pointer active:scale-95">✏️ Edit</button>
-                            <button onclick="deleteCompany('${comp.id}', event)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-2.5 py-1.5 rounded-lg font-bold border border-rose-200 transition cursor-pointer active:scale-95">🗑️ Delete</button>
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-xs transition cursor-pointer active:scale-95">View Bills</button>
+                            <div class="relative inline-block text-left">
+                                <button onclick="toggleCompanyMenu('${comp.id}', event)" data-company-menu-btn="${comp.id}" class="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer border border-slate-200 active:scale-95 flex items-center justify-center" title="More Options">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
+                                    </svg>
+                                </button>
+                                <div id="companyMenu-${comp.id}" class="company-action-menu hidden absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 font-medium text-xs text-slate-700">
+                                    <button onclick="openEditCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700 font-semibold cursor-pointer">
+                                        <span>✏️</span> Edit Profile
+                                    </button>
+                                    <button onclick="deleteCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 text-rose-600 font-semibold cursor-pointer border-t border-slate-100">
+                                        <span>🗑️</span> Delete Distributor
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </td>
                 `;
@@ -1764,7 +1777,7 @@
                     const card = document.createElement('div');
                     card.className = `bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs ${hasOverdue ? 'border-l-4 border-l-rose-500 bg-rose-50/20' : 'border-l-4 border-l-blue-600'} hover:border-blue-300 transition flex flex-col gap-2.5 cursor-pointer`;
                     card.onclick = (e) => {
-                        if (!e.target.closest('button')) {
+                        if (!e.target.closest('button') && !e.target.closest('.company-action-menu')) {
                             openModal(comp.name);
                         }
                     };
@@ -1804,12 +1817,21 @@
                             <button onclick="openModal('${comp.name}')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-xl font-extrabold shadow-xs transition text-center cursor-pointer active:scale-95">
                                 View Bills
                             </button>
-                            <button onclick="openEditCompany('${comp.id}', event)" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs px-3 py-2 rounded-xl font-bold border border-slate-200 transition cursor-pointer active:scale-95">
-                                ✏️ Edit
-                            </button>
-                            <button onclick="deleteCompany('${comp.id}', event)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl font-bold border border-rose-200 transition cursor-pointer active:scale-95">
-                                🗑️ Delete
-                            </button>
+                            <div class="relative inline-block text-left shrink-0">
+                                <button onclick="toggleCompanyMenu('${comp.id}', event)" data-company-menu-btn="${comp.id}" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-200 transition cursor-pointer active:scale-95 flex items-center justify-center" title="More Options">
+                                    <svg class="w-4 h-4 fill-current text-slate-600" viewBox="0 0 20 20">
+                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
+                                    </svg>
+                                </button>
+                                <div id="companyMenuMobile-${comp.id}" class="company-action-menu hidden absolute right-0 bottom-full mb-1.5 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1.5 font-medium text-xs text-slate-700">
+                                    <button onclick="openEditCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 font-bold cursor-pointer">
+                                        <span>✏️</span> Edit Profile
+                                    </button>
+                                    <button onclick="deleteCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2.5 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 text-rose-600 font-bold cursor-pointer border-t border-slate-100">
+                                        <span>🗑️</span> Delete Distributor
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     `;
                     mobileList.appendChild(card);
@@ -2107,6 +2129,75 @@
                 settledBills.forEach(bill => tbody.appendChild(createBillRow(bill, true)));
             }
         }
+
+        function toggleCompanyMenu(compId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+
+            const btn = event ? event.currentTarget : null;
+            const isMobile = window.innerWidth < 768;
+            const menuId = isMobile ? `companyMenuMobile-${compId}` : `companyMenu-${compId}`;
+            let menuEl = document.getElementById(menuId);
+            if (!menuEl) {
+                menuEl = document.getElementById(`companyMenu-${compId}`) || document.getElementById(`companyMenuMobile-${compId}`);
+            }
+            if (!menuEl) return;
+
+            const isCurrentlyHidden = menuEl.classList.contains('hidden');
+
+            closeAllCompanyMenus();
+
+            if (isCurrentlyHidden) {
+                menuEl.classList.remove('hidden');
+
+                if (btn) {
+                    const rect = btn.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    if (spaceBelow < 130) {
+                        menuEl.classList.remove('mt-1', 'top-full');
+                        menuEl.classList.add('bottom-full', 'mb-1.5');
+                    } else {
+                        menuEl.classList.remove('bottom-full', 'mb-1.5');
+                        menuEl.classList.add('mt-1', 'top-full');
+                    }
+                }
+
+                const tr = menuEl.closest('tr');
+                if (tr) {
+                    tr.style.position = 'relative';
+                    tr.style.zIndex = '40';
+                }
+                const card = menuEl.closest('#companiesMobileList > div');
+                if (card) {
+                    card.style.position = 'relative';
+                    card.style.zIndex = '40';
+                }
+            }
+        }
+
+        function closeAllCompanyMenus() {
+            document.querySelectorAll('.company-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
+                const tr = menu.closest('tr');
+                if (tr) {
+                    tr.style.position = '';
+                    tr.style.zIndex = '';
+                }
+                const card = menu.closest('#companiesMobileList > div');
+                if (card) {
+                    card.style.position = '';
+                    card.style.zIndex = '';
+                }
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.company-action-menu') && !e.target.closest('[data-company-menu-btn]')) {
+                closeAllCompanyMenus();
+            }
+        });
 
         function openEditCompany(compId, e) {
             if (e) e.stopPropagation();
