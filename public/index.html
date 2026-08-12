@@ -85,43 +85,43 @@
         </header>
 
         <!-- Summary Cards (Straight horizontal row on mobile: grid-cols-3) -->
-        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-5 mb-6">
             <!-- Total Outstanding Card -->
-            <div class="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-blue-600 flex flex-col justify-between">
-                <div class="flex items-center justify-between gap-1 mb-1.5">
-                    <p class="text-slate-500 text-xs sm:text-sm font-bold leading-tight truncate" title="Total Outstanding">
+            <div class="bg-white p-3.5 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-blue-600 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-1 mb-1.5 sm:mb-2">
+                    <p class="text-slate-500 text-xs sm:text-sm lg:text-base font-bold leading-tight truncate" title="Total Outstanding">
                         <span class="sm:hidden">Total</span>
                         <span class="hidden sm:inline">Total Outstanding</span>
                     </p>
-                    <span class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💰</span>
+                    <span class="w-6 h-6 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-md sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs sm:text-sm lg:text-base font-bold shrink-0">💰</span>
                 </div>
-                <h2 id="totalOutstanding" class="text-base xs:text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
+                <h2 id="totalOutstanding" class="text-base xs:text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
             </div>
 
             <!-- Current Due Card -->
-            <div class="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-amber-500 flex flex-col justify-between">
-                <div class="flex items-center justify-between gap-1 mb-1.5">
-                    <p class="text-slate-500 text-xs sm:text-sm font-bold leading-tight truncate" title="Current Due (Upcoming)">
+            <div class="bg-white p-3.5 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-amber-500 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-1 mb-1.5 sm:mb-2">
+                    <p class="text-slate-500 text-xs sm:text-sm lg:text-base font-bold leading-tight truncate" title="Current Due (Upcoming)">
                         <span class="sm:hidden">Current</span>
                         <span class="hidden sm:inline">Current Due</span>
                     </p>
-                    <span class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">📅</span>
+                    <span class="w-6 h-6 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-md sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs sm:text-sm lg:text-base font-bold shrink-0">📅</span>
                 </div>
-                <h2 id="currentDue" class="text-base xs:text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
+                <h2 id="currentDue" class="text-base xs:text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-black text-slate-900 tracking-tight truncate">₹0</h2>
             </div>
 
             <!-- Clickable Overdue Card -->
-            <div onclick="openOverdueModal()" class="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/40 transition active:scale-[0.98] flex flex-col justify-between group" title="Click to view overdue companies and bills">
-                <div class="flex items-center justify-between gap-1 mb-1.5">
-                    <p class="text-slate-500 text-xs sm:text-sm font-bold leading-tight truncate" title="Overdue Amount">
+            <div onclick="openOverdueModal()" class="bg-white p-3.5 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xs sm:shadow-xs border border-slate-200/90 border-l-3 sm:border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/40 transition active:scale-[0.98] flex flex-col justify-between group" title="Click to view overdue companies and bills">
+                <div class="flex items-center justify-between gap-1 mb-1.5 sm:mb-2">
+                    <p class="text-slate-500 text-xs sm:text-sm lg:text-base font-bold leading-tight truncate" title="Overdue Amount">
                         Overdue
                     </p>
-                    <span class="text-[10px] sm:text-[11px] bg-rose-100 text-rose-800 font-extrabold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded sm:rounded-lg border border-rose-200 group-hover:bg-rose-200 transition shrink-0">
+                    <span class="text-[10px] sm:text-xs bg-rose-100 text-rose-800 font-extrabold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded sm:rounded-lg border border-rose-200 group-hover:bg-rose-200 transition shrink-0">
                         <span class="sm:hidden">🔍</span>
                         <span class="hidden sm:inline">View 🔍</span>
                     </span>
                 </div>
-                <h2 id="overdueAmount" class="text-base xs:text-lg sm:text-2xl lg:text-3xl font-black text-rose-600 tracking-tight truncate">₹0</h2>
+                <h2 id="overdueAmount" class="text-base xs:text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-black text-rose-600 tracking-tight truncate">₹0</h2>
             </div>
         </div>
 
@@ -213,12 +213,12 @@
             <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200/80 shadow-2xs">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border-b border-slate-200">
-                            <th class="p-3">Company Name</th>
-                            <th class="p-3">Credit Terms</th>
-                            <th class="p-3">Total Outstanding</th>
-                            <th class="p-3">Bank Details</th>
-                            <th class="p-3 text-right">Action</th>
+                        <tr class="bg-slate-100 text-slate-800 text-xs sm:text-sm font-extrabold border-b border-slate-200">
+                            <th class="p-3.5 sm:p-4">Company Name</th>
+                            <th class="p-3.5 sm:p-4">Credit Terms</th>
+                            <th class="p-3.5 sm:p-4">Total Outstanding</th>
+                            <th class="p-3.5 sm:p-4">Bank Details</th>
+                            <th class="p-3.5 sm:p-4 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="companiesTableBody" class="text-xs sm:text-sm"></tbody>
@@ -1737,32 +1737,32 @@
                     }
                 };
                 tr.innerHTML = `
-                    <td class="p-3 font-extrabold text-blue-900">
+                    <td class="p-3.5 sm:p-4 font-extrabold text-blue-900">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-xs sm:text-sm">${comp.name}</span>
-                            ${hasOverdue ? `<span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-lg font-bold border border-rose-200">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
+                            <span class="text-xs sm:text-base">${comp.name}</span>
+                            ${hasOverdue ? `<span class="bg-rose-100 text-rose-800 text-[10px] sm:text-xs px-2 py-0.5 rounded-lg font-bold border border-rose-200">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
                         </div>
                     </td>
-                    <td class="p-3 text-xs sm:text-sm font-semibold text-slate-700">${comp.creditDays} Days</td>
-                    <td class="p-3 font-extrabold text-xs sm:text-sm ${comp.outstanding > 0 ? 'text-rose-600' : 'text-emerald-600'}">₹${(comp.outstanding || 0).toLocaleString('en-IN')}</td>
-                    <td class="p-3 text-[11px] sm:text-xs text-slate-600">
-                        <div class="font-medium">${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
-                        <div class="text-slate-400">IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
+                    <td class="p-3.5 sm:p-4 text-xs sm:text-sm font-semibold text-slate-700">${comp.creditDays} Days</td>
+                    <td class="p-3.5 sm:p-4 font-extrabold text-xs sm:text-base ${comp.outstanding > 0 ? 'text-rose-600' : 'text-emerald-600'}">₹${(comp.outstanding || 0).toLocaleString('en-IN')}</td>
+                    <td class="p-3.5 sm:p-4 text-[11px] sm:text-xs text-slate-600">
+                        <div class="font-semibold text-slate-800">${comp.bankName || '-'} | A/C: ${comp.accountNo || '-'}</div>
+                        <div class="text-slate-500 font-medium">IFSC: ${comp.ifsc || '-'} | UPI: ${comp.upi || '-'}</div>
                     </td>
-                    <td class="p-3 text-right">
+                    <td class="p-3.5 sm:p-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-xs transition cursor-pointer active:scale-95">View Bills</button>
+                            <button onclick="openModal('${comp.name}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3.5 sm:px-4 py-2 rounded-xl font-extrabold shadow-xs transition cursor-pointer active:scale-95">View Bills</button>
                             <div class="relative inline-block text-left">
-                                <button onclick="toggleCompanyMenu('${comp.id}', event)" data-company-menu-btn="${comp.id}" class="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer border border-slate-200 active:scale-95 flex items-center justify-center" title="More Options">
-                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                <button onclick="toggleCompanyMenu('${comp.id}', event)" data-company-menu-btn="${comp.id}" class="p-2 sm:p-2.5 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer border border-slate-300 active:scale-95 flex items-center justify-center" title="More Options">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 fill-current" viewBox="0 0 20 20">
                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
                                     </svg>
                                 </button>
-                                <div id="companyMenu-${comp.id}" class="company-action-menu hidden absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 font-medium text-xs text-slate-700">
-                                    <button onclick="openEditCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 text-slate-700 font-semibold cursor-pointer">
+                                <div id="companyMenu-${comp.id}" class="company-action-menu hidden absolute right-0 mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1.5 font-medium text-xs sm:text-sm text-slate-700">
+                                    <button onclick="openEditCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-4 py-2.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 font-bold cursor-pointer">
                                         <span>✏️</span> Edit Profile
                                     </button>
-                                    <button onclick="deleteCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 text-rose-600 font-semibold cursor-pointer border-t border-slate-100">
+                                    <button onclick="deleteCompany('${comp.id}', event); closeAllCompanyMenus();" class="w-full text-left px-4 py-2.5 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2 text-rose-600 font-bold cursor-pointer border-t border-slate-100">
                                         <span>🗑️</span> Delete Distributor
                                     </button>
                                 </div>
