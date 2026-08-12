@@ -85,16 +85,49 @@
             </div>
 
             <!-- Add Bill Form -->
-            <div class="bg-white p-5 rounded-lg shadow">
-                <h3 class="font-bold text-lg mb-3 text-blue-700">📄 Enter New / Last Bill</h3>
+            <div class="bg-white p-5 rounded-lg shadow relative">
+                <h3 class="font-bold text-lg mb-3 text-blue-700 flex items-center justify-between">
+                    <span>📄 Enter New / Last Bill</span>
+                </h3>
                 <form id="billForm" onsubmit="addBill(event)" class="space-y-3">
-                    <select id="billCompanySelect" required class="w-full p-2 border rounded bg-white">
-                        <option value="">Select Distributor</option>
-                    </select>
-                    <input type="text" id="billNo" placeholder="Bill Number (#INV)" required class="w-full p-2 border rounded">
-                    <input type="date" id="billDate" required class="w-full p-2 border rounded">
-                    <input type="number" id="billAmount" placeholder="Total Amount (₹)" required class="w-full p-2 border rounded">
-                    <button type="submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 font-bold">Save Bill & Set Due Date</button>
+                    <div id="billDistributorSearchContainer" class="relative space-y-1">
+                        <label class="block text-xs font-bold text-gray-700">Distributor / Supplier *</label>
+                        <!-- Quick Search Filter Box -->
+                        <div class="relative">
+                            <input type="text" id="billDistributorSearch" oninput="onBillDistributorSearchInput(this.value)" onfocus="openBillCompanyDropdown()" placeholder="Search distributor by name..." autocomplete="off" class="w-full pl-8 pr-7 py-2 border rounded-lg text-xs bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <span class="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
+                            <button type="button" onclick="clearBillDistributorSearch()" id="clearDistributorSearchBtn" class="hidden absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-700 text-xs font-bold">✕</button>
+                        </div>
+
+                        <!-- Dropdown list overlay on typing search -->
+                        <div id="billCompanyDropdownList" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-lg shadow-xl z-30 max-h-48 overflow-y-auto"></div>
+
+                        <!-- Distributor Select Dropdown -->
+                        <select id="billCompanySelect" onchange="syncBillCompanySelectToSearch()" required class="w-full p-2 border rounded-lg bg-white text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- Select Distributor --</option>
+                        </select>
+                        <div id="billDistributorSearchCount" class="text-[11px] text-gray-500 hidden mt-1"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Bill Number *</label>
+                        <input type="text" id="billNo" placeholder="Bill Number (#INV-102)" required class="w-full p-2 border rounded-lg text-xs">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Bill Date *</label>
+                            <input type="date" id="billDate" required class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Total Amount (₹) *</label>
+                            <input type="number" id="billAmount" step="any" min="0.01" placeholder="Amount (₹)" required class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 text-white p-2.5 rounded-lg hover:bg-green-700 font-bold text-xs shadow-xs transition">
+                        Save Bill & Set Due Date
+                    </button>
                 </form>
             </div>
         </div>
@@ -1220,14 +1253,8 @@
                 document.getElementById('currentDue').innerText = '₹' + (allData.metrics.currentDue || 0).toLocaleString('en-IN');
                 document.getElementById('overdueAmount').innerText = '₹' + (allData.metrics.overdueAmount || 0).toLocaleString('en-IN');
 
-                const select = document.getElementById('billCompanySelect');
-                select.innerHTML = '<option value="">Select Distributor</option>';
-                (allData.companies || []).forEach(comp => {
-                    const opt = document.createElement('option');
-                    opt.value = comp.name;
-                    opt.innerText = comp.name;
-                    select.appendChild(opt);
-                });
+                const searchVal = document.getElementById('billDistributorSearch')?.value || '';
+                renderBillCompanySelect(searchVal);
 
                 renderCompaniesTable();
 
@@ -1239,6 +1266,127 @@
             } catch (err) {
                 console.error("Dashboard error:", err);
             }
+        }
+
+        // --- 🔍 Bill Form Distributor Search & Select Helpers ---
+        function renderBillCompanySelect(filterQuery = '') {
+            const select = document.getElementById('billCompanySelect');
+            const dropdownList = document.getElementById('billCompanyDropdownList');
+            const clearBtn = document.getElementById('clearDistributorSearchBtn');
+            const countLabel = document.getElementById('billDistributorSearchCount');
+
+            if (!select) return;
+
+            const currentVal = select.value;
+            const q = (filterQuery || '').toLowerCase().trim();
+
+            if (clearBtn) {
+                if (q) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+
+            select.innerHTML = '<option value="">-- Select Distributor --</option>';
+            if (dropdownList) dropdownList.innerHTML = '';
+
+            const companies = allData.companies || [];
+            let matchCount = 0;
+
+            companies.forEach(comp => {
+                const name = comp.name || '';
+                const credit = comp.credit_days !== undefined ? `${comp.credit_days} Days` : '';
+                const dueText = comp.outstanding > 0 ? `(Bal ₹${Number(comp.outstanding).toLocaleString('en-IN')})` : '';
+
+                if (!q || name.toLowerCase().includes(q) || (comp.bank_name && comp.bank_name.toLowerCase().includes(q))) {
+                    matchCount++;
+
+                    // Native select option
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = `${name} ${credit ? `[${credit}]` : ''}`;
+                    if (name === currentVal) opt.selected = true;
+                    select.appendChild(opt);
+
+                    // Floating list item
+                    if (dropdownList) {
+                        const item = document.createElement('div');
+                        item.className = 'p-2.5 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-xs border-b last:border-none border-gray-100 transition-colors';
+                        item.innerHTML = `
+                            <div class="font-bold text-gray-900">${name}</div>
+                            <div class="text-[11px] text-gray-500">${credit} ${comp.outstanding > 0 ? `<span class="text-red-600 font-bold ml-1">Bal ₹${Number(comp.outstanding).toLocaleString('en-IN')}</span>` : ''}</div>
+                        `;
+                        item.onmousedown = (e) => {
+                            e.preventDefault();
+                            selectDistributorFromSearch(name);
+                        };
+                        dropdownList.appendChild(item);
+                    }
+                }
+            });
+
+            if (dropdownList && q) {
+                if (matchCount === 0) {
+                    dropdownList.innerHTML = `<div class="p-3 text-center text-gray-400 text-xs italic">No matching distributor found "${filterQuery}"</div>`;
+                }
+                dropdownList.classList.remove('hidden');
+            }
+
+            if (countLabel) {
+                if (q) {
+                    countLabel.innerText = `${matchCount} of ${companies.length} distributors match "${filterQuery}"`;
+                    countLabel.classList.remove('hidden');
+                } else {
+                    countLabel.classList.add('hidden');
+                }
+            }
+        }
+
+        function onBillDistributorSearchInput(val) {
+            renderBillCompanySelect(val);
+            const select = document.getElementById('billCompanySelect');
+            if (!select) return;
+
+            const companies = allData.companies || [];
+            const exactMatch = companies.find(c => (c.name || '').toLowerCase() === val.toLowerCase().trim());
+            if (exactMatch) {
+                select.value = exactMatch.name;
+            }
+        }
+
+        function openBillCompanyDropdown() {
+            const searchInput = document.getElementById('billDistributorSearch');
+            const val = searchInput ? searchInput.value : '';
+            renderBillCompanySelect(val);
+        }
+
+        function closeBillCompanyDropdown() {
+            const dropdownList = document.getElementById('billCompanyDropdownList');
+            if (dropdownList) dropdownList.classList.add('hidden');
+        }
+
+        function selectDistributorFromSearch(name) {
+            const select = document.getElementById('billCompanySelect');
+            const searchInput = document.getElementById('billDistributorSearch');
+            if (select) select.value = name;
+            if (searchInput) searchInput.value = name;
+            closeBillCompanyDropdown();
+        }
+
+        function syncBillCompanySelectToSearch() {
+            const select = document.getElementById('billCompanySelect');
+            const searchInput = document.getElementById('billDistributorSearch');
+            if (select && searchInput && select.value) {
+                searchInput.value = select.value;
+            }
+            closeBillCompanyDropdown();
+        }
+
+        function clearBillDistributorSearch() {
+            const searchInput = document.getElementById('billDistributorSearch');
+            const select = document.getElementById('billCompanySelect');
+            if (searchInput) searchInput.value = '';
+            if (select) select.value = '';
+            renderBillCompanySelect('');
+            closeBillCompanyDropdown();
         }
 
         function renderCompaniesTable() {
@@ -1678,7 +1826,9 @@
 
                 if (res.ok) {
                     document.getElementById('billForm').reset();
+                    clearBillDistributorSearch();
                     await loadDashboard();
+                    showToast('Bill saved successfully!', 'success');
                 } else {
                     const data = await res.json();
                     alert('Failed to add bill: ' + (data.error || 'Server error'));
@@ -2303,6 +2453,13 @@
                 }
             );
         }
+
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('billDistributorSearchContainer');
+            if (container && !container.contains(e.target)) {
+                closeBillCompanyDropdown();
+            }
+        });
 
         window.onload = async () => {
             const isAuth = await checkAuthStatus();
