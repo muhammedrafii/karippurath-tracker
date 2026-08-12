@@ -1,9 +1,11 @@
-const CACHE_NAME = 'shop-ledger-v1';
+const CACHE_NAME = 'shop-ledger-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
