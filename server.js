@@ -920,6 +920,7 @@ const deletedTrashIds = new Set();
 
 // Local in-memory cache for 30-Day Activity Logs
 const localActivityLogs = [];
+const deletedActivityLogIds = new Set();
 
 // Helper to log system events (auto-purged after 30 days)
 async function logActivity(shopId, action, description, metadata = {}) {
@@ -1447,6 +1448,7 @@ app.get('/api/activity-log', async (req, res) => {
 
         const validLogs = Array.from(combinedMap.values()).filter(l => {
             if (!l || !l.created_at) return false;
+            if (deletedActivityLogIds.has(String(l.id))) return false;
             if (l.shop_id && String(l.shop_id) !== shopId && String(l.shop_id) !== '1' && shopId !== '1') return false;
             return new Date(l.created_at).getTime() >= thirtyDaysAgo;
         });
@@ -1456,6 +1458,70 @@ app.get('/api/activity-log', async (req, res) => {
 
         res.json({ success: true, logs: validLogs, retentionDays: 30 });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Clear all activity logs for current shop
+app.delete('/api/activity-log/clear', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const shopId = String(shop.id);
+
+        // Fetch logs to add their IDs to deleted set
+        let dbLogs = [];
+        try {
+            const { data } = await supabase.from('activity_log').select('*');
+            if (Array.isArray(data)) dbLogs = data;
+            await supabase.from('activity_log').delete().eq('shop_id', shopId);
+        } catch (e) {}
+
+        for (let l of [...dbLogs, ...localActivityLogs]) {
+            if (l && l.id && (!l.shop_id || String(l.shop_id) === shopId || String(l.shop_id) === '1' || shopId === '1')) {
+                deletedActivityLogIds.add(String(l.id));
+            }
+        }
+
+        // Clear local memory cache for this shop
+        for (let i = localActivityLogs.length - 1; i >= 0; i--) {
+            const l = localActivityLogs[i];
+            if (!l.shop_id || String(l.shop_id) === shopId || String(l.shop_id) === '1' || shopId === '1') {
+                localActivityLogs.splice(i, 1);
+            }
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Clear activity logs error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a single activity log entry
+app.delete('/api/activity-log/:id', async (req, res) => {
+    try {
+        const shop = await getAuthShop(req);
+        if (!shop) return res.status(401).json({ error: "Unauthorized" });
+        const rawId = String(req.params.id);
+
+        deletedActivityLogIds.add(rawId);
+
+        // Remove from local memory cache
+        for (let i = localActivityLogs.length - 1; i >= 0; i--) {
+            if (String(localActivityLogs[i].id) === rawId) {
+                localActivityLogs.splice(i, 1);
+            }
+        }
+
+        // Remove from Supabase
+        try {
+            await supabase.from('activity_log').delete().eq('id', rawId);
+        } catch (e) {}
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Delete activity log error:", err);
         res.status(500).json({ error: err.message });
     }
 });
