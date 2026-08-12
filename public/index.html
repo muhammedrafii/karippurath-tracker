@@ -110,100 +110,55 @@
             </div>
         </div>
 
-        <!-- Action Forms Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 mb-6">
-            <!-- Add Company Form -->
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90">
-                <h3 class="font-extrabold text-base sm:text-lg mb-3 text-blue-900 flex items-center gap-2">
-                    <span>➕ Add Distributor & Book Outstanding</span>
-                </h3>
-                <form id="companyForm" onsubmit="addCompany(event)" class="space-y-3">
+        <!-- Action Trigger Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 mb-6">
+            <!-- Add Company Trigger Card -->
+            <button onclick="openAddCompanyModal()" type="button" class="bg-white hover:bg-blue-50/70 p-4 sm:p-5 rounded-2xl shadow-xs hover:shadow-md border border-slate-200 hover:border-blue-300 text-left transition-all active:scale-[0.99] flex items-center justify-between group cursor-pointer border-l-4 border-l-blue-600">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xl shrink-0 font-extrabold shadow-md shadow-blue-500/25 group-hover:scale-110 transition-transform">
+                        🏢
+                    </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Distributor / Company Name *</label>
-                        <input type="text" id="compName" placeholder="Company Name (e.g. Ashirvad Pipes)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-black text-sm sm:text-base text-slate-900 group-hover:text-blue-700 transition-colors">
+                                Add Distributor Profile
+                            </h3>
+                            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md">NEW</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">
+                            Register supplier, credit days & opening balance
+                        </p>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Credit Terms (Days) *</label>
-                            <input type="number" id="compCredit" placeholder="Credit Days (e.g. 30)" min="0" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Book Outstanding Balance (₹) *</label>
-                            <input type="number" id="openingBalance" placeholder="Outstanding (₹)" min="0" required class="w-full p-2.5 border border-amber-300/80 rounded-xl text-xs sm:text-sm bg-amber-50/60 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition font-semibold">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Bank Name (Optional)</label>
-                            <input type="text" id="bankName" placeholder="Bank Name" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Account No (Optional)</label>
-                            <input type="text" id="accountNo" placeholder="Account Number" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">IFSC Code (Optional)</label>
-                            <input type="text" id="ifsc" placeholder="IFSC Code" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">UPI ID (Optional)</label>
-                            <input type="text" id="upi" placeholder="UPI ID (e.g. shop@upi)" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-[0.98] mt-1">
-                        Save Company Profile & Opening Balance
-                    </button>
-                </form>
-            </div>
+                </div>
+                <div class="flex items-center gap-1 bg-blue-600 group-hover:bg-blue-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-xs transition-colors shrink-0 ml-2">
+                    <span>➕ Add</span>
+                    <span class="text-xs">↗</span>
+                </div>
+            </button>
 
-            <!-- Add Bill Form -->
-            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/90 relative">
-                <h3 class="font-extrabold text-base sm:text-lg mb-3 text-blue-900 flex items-center justify-between">
-                    <span>📄 Enter New / Last Bill</span>
-                </h3>
-                <form id="billForm" onsubmit="addBill(event)" class="space-y-3">
-                    <div id="billDistributorSearchContainer" class="relative space-y-1">
-                        <label class="block text-xs font-bold text-slate-700">Distributor / Supplier *</label>
-                        <!-- Quick Search Filter Box -->
-                        <div class="relative">
-                            <input type="text" id="billDistributorSearch" oninput="onBillDistributorSearchInput(this.value)" onfocus="openBillCompanyDropdown()" placeholder="Search distributor by name..." autocomplete="off" class="w-full pl-8 pr-7 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                            <span class="absolute left-2.5 top-3 text-slate-400 text-xs">🔍</span>
-                            <button type="button" onclick="clearBillDistributorSearch()" id="clearDistributorSearchBtn" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold p-1">✕</button>
-                        </div>
-
-                        <!-- Dropdown list overlay on typing search -->
-                        <div id="billCompanyDropdownList" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto"></div>
-
-                        <!-- Distributor Select Dropdown -->
-                        <select id="billCompanySelect" onchange="syncBillCompanySelectToSearch()" required class="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition">
-                            <option value="">-- Select Distributor --</option>
-                        </select>
-                        <div id="billDistributorSearchCount" class="text-[11px] text-slate-500 hidden mt-1"></div>
+            <!-- Enter Bill Trigger Card -->
+            <button onclick="openAddBillModal()" type="button" class="bg-white hover:bg-emerald-50/70 p-4 sm:p-5 rounded-2xl shadow-xs hover:shadow-md border border-slate-200 hover:border-emerald-300 text-left transition-all active:scale-[0.99] flex items-center justify-between group cursor-pointer border-l-4 border-l-emerald-600">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-xl shrink-0 font-extrabold shadow-md shadow-emerald-500/25 group-hover:scale-110 transition-transform">
+                        📄
                     </div>
-
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Bill Number *</label>
-                        <input type="text" id="billNo" placeholder="Bill Number (#INV-102)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Bill Date *</label>
-                            <input type="date" id="billDate" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-black text-sm sm:text-base text-slate-900 group-hover:text-emerald-700 transition-colors">
+                                Enter New / Last Bill
+                            </h3>
+                            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md">BILL</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Total Amount (₹) *</label>
-                            <input type="number" id="billAmount" step="any" min="0.01" placeholder="Amount (₹)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition font-semibold">
-                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">
+                            Record invoice number, bill date & total amount
+                        </p>
                     </div>
-
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-[0.98] mt-1">
-                        Save Bill & Set Due Date
-                    </button>
-                </form>
-            </div>
+                </div>
+                <div class="flex items-center gap-1 bg-emerald-600 group-hover:bg-emerald-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-xs transition-colors shrink-0 ml-2">
+                    <span>🧾 Enter</span>
+                    <span class="text-xs">↗</span>
+                </div>
+            </button>
         </div>
 
         <!-- Companies Summary Table -->
@@ -239,7 +194,8 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto rounded-xl border border-slate-200/80 shadow-2xs">
+            <!-- Desktop Table View (Hidden on mobile) -->
+            <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200/80 shadow-2xs">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border-b border-slate-200">
@@ -252,6 +208,125 @@
                     </thead>
                     <tbody id="companiesTableBody" class="text-xs sm:text-sm"></tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Cards View (Visible on mobile/tablet screens) -->
+            <div id="companiesMobileList" class="md:hidden space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Add Distributor Modal -->
+    <div id="addCompanyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 overflow-y-auto p-3 sm:p-4">
+        <div class="min-h-full flex items-center justify-center">
+            <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200/90 relative my-auto">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">🏢</div>
+                        <div>
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">Add Distributor Profile</h3>
+                            <p class="text-xs text-slate-500">Register supplier, credit terms & opening balance</p>
+                        </div>
+                    </div>
+                    <button onclick="closeAddCompanyModal()" type="button" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">✕</button>
+                </div>
+
+                <form id="companyForm" onsubmit="addCompany(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Distributor / Company Name *</label>
+                        <input type="text" id="compName" placeholder="Company Name (e.g. Ashirvad Pipes)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Credit Terms (Days) *</label>
+                            <input type="number" id="compCredit" placeholder="Credit Days (e.g. 30)" min="0" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Book Outstanding Balance (₹) *</label>
+                            <input type="number" id="openingBalance" placeholder="Outstanding (₹)" min="0" required class="w-full p-2.5 border border-amber-300/80 rounded-xl text-xs sm:text-sm bg-amber-50/60 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition font-semibold">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Bank Name (Optional)</label>
+                            <input type="text" id="bankName" placeholder="Bank Name" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Account No (Optional)</label>
+                            <input type="text" id="accountNo" placeholder="Account Number" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">IFSC Code (Optional)</label>
+                            <input type="text" id="ifsc" placeholder="IFSC Code" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">UPI ID (Optional)</label>
+                            <input type="text" id="upi" placeholder="UPI ID (e.g. shop@upi)" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                    </div>
+                    <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                        <button type="button" onclick="closeAddCompanyModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-md transition cursor-pointer active:scale-95">Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enter Bill Modal -->
+    <div id="addBillModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 overflow-y-auto p-3 sm:p-4">
+        <div class="min-h-full flex items-center justify-center">
+            <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200/90 relative my-auto">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-emerald-500/20">📄</div>
+                        <div>
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">Enter New / Last Bill</h3>
+                            <p class="text-xs text-slate-500">Record supplier invoice number, date & amount</p>
+                        </div>
+                    </div>
+                    <button onclick="closeAddBillModal()" type="button" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">✕</button>
+                </div>
+
+                <form id="billForm" onsubmit="addBill(event)" class="space-y-3.5">
+                    <div id="billDistributorSearchContainer" class="relative space-y-1">
+                        <label class="block text-xs font-bold text-slate-700">Distributor / Supplier *</label>
+                        <div class="relative">
+                            <input type="text" id="billDistributorSearch" oninput="onBillDistributorSearchInput(this.value)" onfocus="openBillCompanyDropdown()" placeholder="Search distributor by name..." autocomplete="off" class="w-full pl-8 pr-7 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                            <span class="absolute left-2.5 top-3 text-slate-400 text-xs">🔍</span>
+                            <button type="button" onclick="clearBillDistributorSearch()" id="clearDistributorSearchBtn" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold p-1">✕</button>
+                        </div>
+
+                        <div id="billCompanyDropdownList" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-blue-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto"></div>
+
+                        <select id="billCompanySelect" onchange="syncBillCompanySelectToSearch()" required class="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition">
+                            <option value="">-- Select Distributor --</option>
+                        </select>
+                        <div id="billDistributorSearchCount" class="text-[11px] text-slate-500 hidden mt-1"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Bill Number *</label>
+                        <input type="text" id="billNo" placeholder="Bill Number (#INV-102)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Bill Date *</label>
+                            <input type="date" id="billDate" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Total Amount (₹) *</label>
+                            <input type="number" id="billAmount" step="any" min="0.01" placeholder="Amount (₹)" required class="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition font-semibold">
+                        </div>
+                    </div>
+
+                    <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                        <button type="button" onclick="closeAddBillModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-md transition cursor-pointer active:scale-95">Save Bill</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1532,8 +1607,10 @@
 
         function renderCompaniesTable() {
             const tbody = document.getElementById('companiesTableBody');
+            const mobileList = document.getElementById('companiesMobileList');
             if (!tbody) return;
             tbody.innerHTML = '';
+            if (mobileList) mobileList.innerHTML = '';
 
             const searchTerm = (document.getElementById('companySearchInput')?.value || '').trim().toLowerCase();
             const statusFilter = document.getElementById('companyStatusFilter')?.value || 'ALL';
@@ -1580,13 +1657,19 @@
             }
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium bg-gray-50/50">🔍 No distributors found ${searchTerm ? `matching "${searchTerm}"` : ''}.</td></tr>`;
+                const emptyMsg = `🔍 No distributors found ${searchTerm ? `matching "${searchTerm}"` : ''}.`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500 font-medium bg-slate-50/50">${emptyMsg}</td></tr>`;
+                if (mobileList) {
+                    mobileList.innerHTML = `<div class="p-6 text-center text-slate-500 font-medium bg-slate-50/80 rounded-2xl border border-slate-200">${emptyMsg}</div>`;
+                }
                 return;
             }
 
             filtered.forEach(comp => {
                 const overdueAmt = companyOverdueMap[comp.name] || 0;
                 const hasOverdue = overdueAmt > 0;
+
+                // Desktop Table Row
                 const tr = document.createElement('tr');
                 tr.className = `border-b border-slate-200/80 hover:bg-blue-50/60 cursor-pointer transition ${hasOverdue ? 'bg-rose-50/40' : ''}`;
                 tr.onclick = (e) => {
@@ -1616,6 +1699,62 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                // Mobile Card Component
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = `bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs ${hasOverdue ? 'border-l-4 border-l-rose-500 bg-rose-50/20' : 'border-l-4 border-l-blue-600'} hover:border-blue-300 transition flex flex-col gap-2.5 cursor-pointer`;
+                    card.onclick = (e) => {
+                        if (!e.target.closest('button')) {
+                            openModal(comp.name);
+                        }
+                    };
+                    card.innerHTML = `
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="space-y-1">
+                                <h4 class="font-extrabold text-sm text-slate-900 flex items-center gap-1.5 flex-wrap">
+                                    <span>${comp.name}</span>
+                                    ${hasOverdue ? `<span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200">Overdue ₹${overdueAmt.toLocaleString('en-IN')} ⚠️</span>` : ''}
+                                </h4>
+                                <div class="text-xs text-slate-500 font-medium">
+                                    💳 Terms: <span class="font-bold text-slate-700">${comp.creditDays} Days Credit</span>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">Outstanding</span>
+                                <span class="font-black text-base ${comp.outstanding > 0 ? 'text-rose-600' : 'text-emerald-600'}">
+                                    ₹${(comp.outstanding || 0).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                        </div>
+
+                        ${(comp.bankName || comp.accountNo || comp.ifsc || comp.upi) ? `
+                        <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/60 text-xs text-slate-600 space-y-1">
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="text-slate-400 font-medium">Bank & A/C:</span>
+                                <span class="font-bold text-slate-800">${comp.bankName || '-'} | ${comp.accountNo || '-'}</span>
+                            </div>
+                            ${(comp.ifsc || comp.upi) ? `
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="text-slate-400 font-medium">IFSC / UPI:</span>
+                                <span class="font-medium text-slate-700">${comp.ifsc || '-'} | ${comp.upi || '-'}</span>
+                            </div>` : ''}
+                        </div>` : ''}
+
+                        <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+                            <button onclick="openModal('${comp.name}')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-xl font-extrabold shadow-xs transition text-center cursor-pointer active:scale-95">
+                                View Bills
+                            </button>
+                            <button onclick="openEditCompany('${comp.id}', event)" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs px-3 py-2 rounded-xl font-bold border border-slate-200 transition cursor-pointer active:scale-95">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="deleteCompany('${comp.id}', event)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs px-3 py-2 rounded-xl font-bold border border-rose-200 transition cursor-pointer active:scale-95">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    `;
+                    mobileList.appendChild(card);
+                }
             });
         }
 
@@ -1920,6 +2059,48 @@
             );
         }
 
+        // --- ➕/📄 Add Company & Add Bill Modal Controls ---
+        function openAddCompanyModal() {
+            const modal = document.getElementById('addCompanyModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    const el = document.getElementById('compName');
+                    if (el) el.focus();
+                }, 50);
+            }
+        }
+
+        function closeAddCompanyModal() {
+            const modal = document.getElementById('addCompanyModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function openAddBillModal(prefillCompany = '') {
+            renderBillCompanySelect('');
+            if (prefillCompany) {
+                selectDistributorFromSearch(prefillCompany);
+            }
+            const today = new Date().toISOString().split('T')[0];
+            const billDateEl = document.getElementById('billDate');
+            if (billDateEl && !billDateEl.value) {
+                billDateEl.value = today;
+            }
+            const modal = document.getElementById('addBillModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    const searchEl = document.getElementById('billDistributorSearch');
+                    if (searchEl) searchEl.focus();
+                }, 50);
+            }
+        }
+
+        function closeAddBillModal() {
+            const modal = document.getElementById('addBillModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
         async function addCompany(e) {
             e.preventDefault();
             const companyData = {
@@ -1941,7 +2122,9 @@
 
                 if (res.ok) {
                     document.getElementById('companyForm').reset();
+                    closeAddCompanyModal();
                     await loadDashboard();
+                    showToast('Distributor profile created successfully!', 'success');
                 } else {
                     const data = await res.json();
                     alert('Failed to add company: ' + (data.error || 'Server error'));
@@ -1970,6 +2153,7 @@
                 if (res.ok) {
                     document.getElementById('billForm').reset();
                     clearBillDistributorSearch();
+                    closeAddBillModal();
                     await loadDashboard();
                     showToast('Bill saved successfully!', 'success');
                 } else {
@@ -2998,6 +3182,14 @@
             const container = document.getElementById('billDistributorSearchContainer');
             if (container && !container.contains(e.target)) {
                 closeBillCompanyDropdown();
+            }
+            const companyModal = document.getElementById('addCompanyModal');
+            if (companyModal && (e.target === companyModal || e.target.parentElement === companyModal)) {
+                closeAddCompanyModal();
+            }
+            const billModal = document.getElementById('addBillModal');
+            if (billModal && (e.target === billModal || e.target.parentElement === billModal)) {
+                closeAddBillModal();
             }
         });
 
