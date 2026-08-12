@@ -350,8 +350,8 @@
     </div>
 
     <!-- Custom Delete Confirmation Modal -->
-    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-xl max-w-sm w-full p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 text-center space-y-4">
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs hidden flex justify-center items-center p-3 sm:p-4 z-[9999] overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-sm w-full p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 text-center space-y-4 relative z-[10000]">
             <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
                 🗑️
             </div>
@@ -363,6 +363,14 @@
                 <button type="button" onclick="closeDeleteConfirmModal()" class="w-1/2 bg-gray-200 text-gray-800 py-2.5 rounded-lg font-bold hover:bg-gray-300 text-sm">Cancel</button>
                 <button type="button" id="confirmDeleteSubmitBtn" class="w-1/2 bg-red-600 text-white py-2.5 rounded-lg font-bold hover:bg-red-700 text-sm shadow">Yes, Delete</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Non-blocking Toast Notification Banner -->
+    <div id="toastNotification" class="fixed top-4 right-4 z-[10001] transition-all duration-300 transform -translate-y-20 opacity-0 pointer-events-none max-w-md w-full px-4">
+        <div id="toastContent" class="p-3.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 bg-gray-900 text-white border-gray-700">
+            <span id="toastMessage">Notification</span>
+            <button onclick="hideToast()" class="text-gray-400 hover:text-white font-bold text-base px-1">✕</button>
         </div>
     </div>
 
@@ -1022,6 +1030,44 @@
             switchAuthTab('login');
             openAuthModal();
         }
+
+        // Toast notification helper
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toastNotification');
+            const toastContent = document.getElementById('toastContent');
+            const toastMessage = document.getElementById('toastMessage');
+            if (!toast || !toastContent || !toastMessage) return;
+
+            toastMessage.textContent = message;
+
+            if (type === 'success') {
+                toastContent.className = 'p-3.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 bg-green-900 text-green-100 border-green-700';
+            } else if (type === 'error') {
+                toastContent.className = 'p-3.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 bg-red-900 text-red-100 border-red-700';
+            } else {
+                toastContent.className = 'p-3.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 bg-gray-900 text-white border-gray-700';
+            }
+
+            toast.classList.remove('-translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+
+            if (window.toastTimeout) clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                hideToast();
+            }, 3500);
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('toastNotification');
+            if (!toast) return;
+            toast.classList.add('-translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+
+        // Override native window.alert to prevent iframe sandbox alert blocks
+        window.alert = function(msg) {
+            showToast(msg, 'info');
+        };
 
         function showDeleteConfirm(title, message, onConfirm) {
             document.getElementById('deleteModalTitle').innerText = title;
@@ -1833,8 +1879,8 @@
                 tr.innerHTML = `
                     <td class="p-2.5 font-medium">${typeBadge}</td>
                     <td class="p-2.5">
-                        <div class="font-bold text-gray-900">${item.title}</div>
-                        <div class="text-[11px] text-gray-500 max-w-md line-clamp-2">${item.details || '-'}</div>
+                        <div class="font-bold text-gray-900 item-title-cell"></div>
+                        <div class="text-[11px] text-gray-500 max-w-md line-clamp-2 item-details-cell"></div>
                     </td>
                     <td class="p-2.5 text-gray-600 whitespace-nowrap">${dateStr}</td>
                     <td class="p-2.5 whitespace-nowrap">
@@ -1843,23 +1889,41 @@
                         </span>
                     </td>
                     <td class="p-2.5 text-right whitespace-nowrap">
-                        <div class="flex items-center justify-end gap-1.5">
-                            <button onclick="restoreTrashItem('${item.id}')" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded text-xs transition shadow-xs flex items-center gap-1">
-                                🔄 Restore
-                            </button>
-                            <button onclick="permanentlyDeleteTrashItem('${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded text-xs transition flex items-center gap-1">
-                                ❌ Delete
-                            </button>
+                        <div class="flex items-center justify-end gap-1.5 action-buttons-cell">
                         </div>
                     </td>
                 `;
+
+                tr.querySelector('.item-title-cell').textContent = item.title || 'Untitled';
+                tr.querySelector('.item-details-cell').textContent = item.details || '-';
+
+                const btnContainer = tr.querySelector('.action-buttons-cell');
+
+                const restoreBtn = document.createElement('button');
+                restoreBtn.className = 'bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded text-xs transition shadow-xs flex items-center gap-1';
+                restoreBtn.innerHTML = '🔄 Restore';
+                restoreBtn.onclick = () => restoreTrashItem(item.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded text-xs transition flex items-center gap-1';
+                deleteBtn.innerHTML = '❌ Delete';
+                deleteBtn.onclick = () => permanentlyDeleteTrashItem(item.id);
+
+                btnContainer.appendChild(restoreBtn);
+                btnContainer.appendChild(deleteBtn);
+
                 tbody.appendChild(tr);
             });
         }
 
         async function restoreTrashItem(id) {
             try {
-                const res = await fetch(`/api/recycle-bin/restore/${id}`, {
+                // Immediate optimistic update
+                trashData = trashData.filter(t => String(t.id) !== String(id));
+                updateTrashBadge();
+                renderRecycleBinTable();
+
+                const res = await fetch(`/api/recycle-bin/restore/${encodeURIComponent(id)}`, {
                     method: 'POST',
                     headers: getAuthHeaders()
                 });
@@ -1868,59 +1932,93 @@
                     await fetchTrashData();
                     renderRecycleBinTable();
                     await loadDashboard();
-                    alert('Record successfully restored back to your active ledger!');
+                    showToast('Record successfully restored back to active ledger!', 'success');
                 } else {
                     const err = await res.json();
-                    alert('Failed to restore item: ' + (err.error || 'Server error'));
-                }
-            } catch (err) {
-                alert('Error restoring item: ' + err.message);
-            }
-        }
-
-        async function permanentlyDeleteTrashItem(id) {
-            if (!confirm('Are you sure you want to PERMANENTLY delete this record? This cannot be undone.')) return;
-            try {
-                const res = await fetch(`/api/recycle-bin/permanent/${id}`, {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
-
-                if (res.ok) {
+                    showToast('Failed to restore item: ' + (err.error || 'Server error'), 'error');
                     await fetchTrashData();
                     renderRecycleBinTable();
-                } else {
-                    const err = await res.json();
-                    alert('Failed to delete item: ' + (err.error || 'Server error'));
                 }
             } catch (err) {
-                alert('Error deleting item: ' + err.message);
+                showToast('Error restoring item: ' + err.message, 'error');
+                await fetchTrashData();
+                renderRecycleBinTable();
             }
         }
 
-        async function clearEntireTrash() {
+        function permanentlyDeleteTrashItem(id) {
+            showDeleteConfirm(
+                "Permanently Delete Item",
+                "Are you sure you want to PERMANENTLY delete this record? This action CANNOT be undone.",
+                async () => {
+                    try {
+                        // Immediate optimistic update
+                        trashData = trashData.filter(t => String(t.id) !== String(id));
+                        updateTrashBadge();
+                        renderRecycleBinTable();
+
+                        const res = await fetch(`/api/recycle-bin/permanent/${encodeURIComponent(id)}`, {
+                            method: 'DELETE',
+                            headers: getAuthHeaders()
+                        });
+
+                        if (res.ok) {
+                            await fetchTrashData();
+                            renderRecycleBinTable();
+                            showToast('Item permanently deleted from database.', 'success');
+                        } else {
+                            const err = await res.json();
+                            showToast('Failed to delete item: ' + (err.error || 'Server error'), 'error');
+                            await fetchTrashData();
+                            renderRecycleBinTable();
+                        }
+                    } catch (err) {
+                        showToast('Error deleting item: ' + err.message, 'error');
+                        await fetchTrashData();
+                        renderRecycleBinTable();
+                    }
+                }
+            );
+        }
+
+        function clearEntireTrash() {
             if (trashData.length === 0) {
-                alert('Recycle Bin is already empty.');
+                showToast('Recycle Bin is already empty.', 'info');
                 return;
             }
-            if (!confirm('Are you sure you want to PERMANENTLY clear all items in the Recycle Bin? This action CANNOT be undone.')) return;
 
-            try {
-                const res = await fetch('/api/recycle-bin/clear', {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
+            showDeleteConfirm(
+                "Empty Recycle Bin",
+                "Are you sure you want to PERMANENTLY clear all items in the Recycle Bin? This action CANNOT be undone.",
+                async () => {
+                    try {
+                        // Immediate optimistic update
+                        trashData = [];
+                        updateTrashBadge();
+                        renderRecycleBinTable();
 
-                if (res.ok) {
-                    await fetchTrashData();
-                    renderRecycleBinTable();
-                } else {
-                    const err = await res.json();
-                    alert('Failed to clear trash: ' + (err.error || 'Server error'));
+                        const res = await fetch('/api/recycle-bin/clear', {
+                            method: 'DELETE',
+                            headers: getAuthHeaders()
+                        });
+
+                        if (res.ok) {
+                            await fetchTrashData();
+                            renderRecycleBinTable();
+                            showToast('Recycle Bin successfully cleared.', 'success');
+                        } else {
+                            const err = await res.json();
+                            showToast('Failed to clear trash: ' + (err.error || 'Server error'), 'error');
+                            await fetchTrashData();
+                            renderRecycleBinTable();
+                        }
+                    } catch (err) {
+                        showToast('Error clearing trash: ' + err.message, 'error');
+                        await fetchTrashData();
+                        renderRecycleBinTable();
+                    }
                 }
-            } catch (err) {
-                alert('Error clearing trash: ' + err.message);
-            }
+            );
         }
 
         window.onload = async () => {
