@@ -20,37 +20,67 @@
 
     <div class="container mx-auto p-4 max-w-6xl">
         <!-- Header -->
-        <header class="bg-blue-700 text-white p-4 rounded-lg shadow-md flex flex-wrap justify-between items-center gap-3 mb-6">
-            <div class="flex items-center gap-2">
-                <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
-                    🔧 <span id="headerShopName">Shop</span> - Dues Tracker
-                </h1>
+        <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl border border-slate-800 mb-6 flex flex-col gap-4">
+            <!-- Top Tier: Branding & Owner Badge -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/80 pb-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl flex items-center justify-center text-2xl shadow-inner shrink-0">
+                        🏪
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center flex-wrap gap-1.5 leading-tight">
+                            <span id="headerShopName" class="text-amber-300">Shop</span>
+                            <span class="text-slate-400 font-normal text-sm sm:text-lg">| Dues Tracker</span>
+                        </h1>
+                        <p class="text-[11px] sm:text-xs text-slate-300 font-medium mt-0.5">Distributor Accounts & Dues Ledger System</p>
+                    </div>
+                </div>
+
+                <!-- Right Side: Install Button & User Badge -->
+                <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
+                    <button onclick="openInstallAppModal()" class="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 px-3.5 rounded-xl flex items-center gap-1.5 border border-amber-300 shadow-md shadow-amber-500/10 transition cursor-pointer active:scale-95">
+                        <span class="text-sm">📲</span> Add to Home Screen
+                    </button>
+                    <div id="userBadgeSection" class="flex items-center gap-2.5 bg-slate-800/80 backdrop-blur-xs px-3.5 py-1.5 rounded-xl border border-slate-700/80 shadow-xs text-left">
+                        <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center text-xs font-bold shrink-0">
+                            👤
+                        </div>
+                        <div class="text-left">
+                            <div class="text-[11px] text-slate-300 font-semibold leading-tight">
+                                Owner: <span id="headerOwnerName" class="text-white font-bold">Not Logged In</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+                                Email: <span id="headerEmail" class="text-amber-300 font-bold">Guest</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- User / Shop Controls -->
-            <div id="authHeaderControls" class="flex flex-wrap items-center gap-2">
-                <button onclick="openInstallAppModal()" class="text-xs bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold py-1.5 px-3 rounded flex items-center gap-1.5 border border-amber-300 shadow-sm transition cursor-pointer">
-                    📲 Add App to Home Screen
-                </button>
-                <div id="userBadgeSection" class="text-right bg-blue-800/80 px-3 py-1 rounded border border-blue-600">
-                    <div class="text-xs text-blue-200">Owner: <span id="headerOwnerName" class="font-bold text-white">Not Logged In</span></div>
-                    <div class="text-xs text-blue-300">Email: <span id="headerEmail" class="font-bold text-yellow-300">Guest</span></div>
+            <!-- Bottom Tier: Actions & Navigation Toolbar -->
+            <div id="authHeaderControls" class="flex flex-wrap items-center justify-between gap-2.5">
+                <!-- Quick Management Tools -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="openShopSettingsModal()" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-semibold py-1.5 px-3 rounded-xl border border-slate-700 shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+                        ⚙️ Shop Credentials
+                    </button>
+                    <button onclick="openActivityLogModal()" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-semibold py-1.5 px-3 rounded-xl border border-slate-700 shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+                        📜 Activity Log
+                    </button>
+                    <button onclick="openRecycleBinModal()" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-semibold py-1.5 px-3 rounded-xl border border-slate-700 shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+                        🗑️ Recycle Bin <span id="trashBadge" class="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold hidden">0</span>
+                    </button>
                 </div>
-                <button onclick="openShopSettingsModal()" class="text-xs bg-blue-900 hover:bg-black text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 border border-blue-500 shadow-sm transition">
-                    ⚙️ Shop Credentials
-                </button>
-                <button onclick="openActivityLogModal()" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold py-1.5 px-3 rounded flex items-center gap-1.5 border border-indigo-300 shadow-sm transition">
-                    📜 Activity Log
-                </button>
-                <button onclick="openRecycleBinModal()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-1.5 px-3 rounded flex items-center gap-1.5 border border-gray-300 shadow-sm transition">
-                    🗑️ Recycle Bin <span id="trashBadge" class="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold hidden">0</span>
-                </button>
-                <button onclick="openAuthModal()" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 shadow-sm transition">
-                    🏪 Switch / Register Shop
-                </button>
-                <button id="logoutBtn" onclick="logoutShop()" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded flex items-center gap-1 shadow-sm transition">
-                    🚪 Logout
-                </button>
+
+                <!-- Account Actions -->
+                <div class="flex items-center gap-2 flex-wrap ml-auto">
+                    <button onclick="openAuthModal()" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3.5 rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+                        🏪 Switch / Register
+                    </button>
+                    <button id="logoutBtn" onclick="logoutShop()" class="text-xs bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white font-semibold py-1.5 px-3 rounded-xl border border-rose-500/30 shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+                        🚪 Logout
+                    </button>
+                </div>
             </div>
         </header>
 
